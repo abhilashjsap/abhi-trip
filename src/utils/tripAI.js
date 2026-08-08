@@ -73,14 +73,14 @@ accommodation, local food, local transport${flightsIncluded ? ", and round-trip 
 
 Respond ONLY with JSON in this exact shape:
 {
-  "feasible": true or false,
   "minimumRealisticBudget": 0,
   "currency": "${currency}",
-  "reason": "1-2 sentences explaining the verdict, mentioning the biggest cost driver"
+  "reason": "1-2 sentences explaining the cost estimate, mentioning the biggest cost driver"
 }
 
 minimumRealisticBudget is the TOTAL minimum for all ${pax} traveler(s) for all ${days} day(s),
 in ${currency}, using budget-tier (not luxury) choices. Round to a sensible number.
+Do not judge feasibility yourself — just give the honest minimum figure.
 `.trim();
 
   const raw = await generateCompletion({
@@ -91,13 +91,29 @@ in ${currency}, using budget-tier (not luxury) choices. Round to a sensible numb
     json: true,
   });
 
+  let result;
   try {
-    return JSON.parse(cleanJsonResponse(raw));
+    result = JSON.parse(cleanJsonResponse(raw));
   } catch (err) {
     logger.error("Failed to parse feasibility check:", err, raw);
     // Fail open — if the check itself breaks, don't block the user over it.
     return { feasible: true };
   }
+
+  const minimum = Number(result.minimumRealisticBudget);
+
+  // Decide feasibility ourselves from the numbers — never trust an LLM's own
+  // true/false verdict on a comparison it already computed the inputs for.
+  // A small margin (5%) avoids blocking someone whose budget is a hair under
+  // a "minimum" that's itself just an estimate.
+  const feasible = !Number.isFinite(minimum) || Number(budget) >= minimum * 0.95;
+
+  return {
+    feasible,
+    minimumRealisticBudget: Number.isFinite(minimum) ? minimum : null,
+    currency: result.currency || currency,
+    reason: result.reason,
+  };
 }
 
 function buildPrompt({
