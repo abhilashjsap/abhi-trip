@@ -1,0 +1,1089 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --navy: #1B2430;
+  --navy-light: #2A3648;
+  --sand: #E8DCC8;
+  --paper: #F7F4EE;
+  --rust: #B8543A;
+  --rust-light: #D06B4F;
+  --sage: #7A8C7E;
+  --ink: #242018;
+  --ink-soft: #5A5548;
+  --line: rgba(36, 32, 24, 0.1);
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------- Landing / Form state ---------- */
+
+.app-container {
+  min-height: 100vh;
+}
+
+.landing {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 5rem 1.5rem 4rem;
+}
+
+.landing-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.brand-mark {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--rust);
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.landing-header h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  line-height: 1.05;
+  color: var(--navy);
+}
+
+.landing-header p {
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ---------- Form ---------- */
+
+.trip-form {
+  background: #fff;
+  padding: 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(36,32,24,0.04), 0 12px 32px -12px rgba(36,32,24,0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border: 1px solid var(--line);
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  padding: 0.8rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color 0.15s ease;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--rust);
+}
+
+input:focus,
+select:focus {
+  border-color: var(--rust);
+  outline: none;
+}
+
+.trip-form button[type="submit"] {
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--navy);
+  color: var(--paper);
+  font-weight: 600;
+  font-size: 1rem;
+  transition: background 0.15s ease, transform 0.1s ease;
+  margin-top: 0.5rem;
+}
+
+.trip-form button[type="submit"]:hover:not(:disabled) {
+  background: var(--rust);
+}
+
+.trip-form button[type="submit"]:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.form-error {
+  color: var(--rust);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ---------- Loading state ---------- */
+
+.loading-state {
+  max-width: 620px;
+  margin: 6rem auto;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+
+.loading-mark {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--line);
+  border-top-color: var(--rust);
+  border-radius: 50%;
+  margin: 0 auto 1.5rem;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--navy);
+}
+
+/* ---------- Result: Hero ---------- */
+
+.trip-result {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hero {
+  position: relative;
+  min-height: 60vh;
+  background-color: var(--navy);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  padding: 3rem 1.5rem;
+  overflow: hidden;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(27,36,48,0.15) 0%, rgba(27,36,48,0.85) 100%);
+}
+
+.hero-content {
+  position: relative;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+  color: var(--paper);
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--sand);
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.hero-content h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 8vw, 4.5rem);
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  line-height: 1;
+}
+
+.hero-content p {
+  font-size: 1.1rem;
+  color: var(--sand);
+  margin: 0;
+}
+
+.hero-credit {
+  position: absolute;
+  bottom: 1rem;
+  right: 1.5rem;
+  font-size: 0.7rem;
+  color: rgba(247,244,238,0.6);
+  text-decoration: none;
+  font-family: var(--font-mono);
+}
+
+.hero-credit:hover {
+  color: var(--paper);
+}
+
+.trip-body {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 1.5rem 5rem;
+}
+
+/* ---------- Trip Stub (signature element) ---------- */
+
+.trip-stub {
+  display: flex;
+  background: var(--navy);
+  color: var(--paper);
+  border-radius: 16px;
+  margin-top: -3rem;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 20px 40px -16px rgba(27,36,48,0.4);
+  overflow: hidden;
+}
+
+.stub-main {
+  flex: 1;
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.stub-row {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.stub-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.stub-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+
+.stub-value {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.stub-destination {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.stub-tear {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-left: 2px dashed rgba(247,244,238,0.25);
+  min-width: 140px;
+}
+
+.stub-reset {
+  background: transparent;
+  border: 1.5px solid rgba(247,244,238,0.35);
+  color: var(--paper);
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.stub-reset:hover {
+  background: rgba(247,244,238,0.1);
+  border-color: var(--paper);
+}
+
+/* ---------- Shared section heading ---------- */
+
+.section-heading {
+  margin: 4rem 0 1.75rem;
+}
+
+.section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rust);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.section-heading h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0;
+}
+
+/* ---------- Attractions ---------- */
+
+.attractions-scroll {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  margin: 0 -1.5rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  scroll-snap-type: x proximity;
+}
+
+.attractions-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.attractions-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+.attraction-card {
+  flex: 0 0 300px;
+  scroll-snap-align: start;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+
+.attraction-image-wrap {
+  position: relative;
+  height: 190px;
+  background: var(--sand);
+}
+
+.attraction-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attraction-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--sand), var(--sage));
+}
+
+.attraction-category {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: rgba(27,36,48,0.85);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+}
+
+.attraction-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.attraction-body h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--navy);
+}
+
+.attraction-desc {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.attraction-history {
+  background: var(--paper);
+  border-left: 3px solid var(--rust);
+  padding: 0.6rem 0.8rem;
+  border-radius: 0 8px 8px 0;
+}
+
+.history-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rust);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.attraction-history p {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.attraction-meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--sage);
+  font-family: var(--font-mono);
+}
+
+.photo-credit {
+  font-size: 0.68rem;
+  color: var(--sage);
+  text-decoration: none;
+  margin-top: auto;
+}
+
+.photo-credit:hover {
+  color: var(--rust);
+}
+
+/* ---------- Itinerary timeline ---------- */
+
+.timeline {
+  position: relative;
+  padding-left: 3rem;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 1.1rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 1.5px;
+  background: var(--line);
+}
+
+.timeline-day {
+  position: relative;
+  margin-bottom: 2.5rem;
+}
+
+.timeline-day:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -3rem;
+  top: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--rust);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-day-num {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--paper);
+}
+
+.timeline-content h3 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0.15rem 0 0.9rem;
+}
+
+.timeline-content ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.timeline-content li {
+  display: flex;
+  gap: 0.9rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.activity-time {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--rust);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 70px;
+  padding-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.activity-body {
+  color: var(--ink);
+}
+
+.activity-note {
+  color: var(--sage);
+  font-style: italic;
+}
+
+/* ---------- Packing list ---------- */
+
+.packing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1.75rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.packing-category h4 {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rust);
+  margin: 0 0 0.75rem;
+}
+
+.packing-category ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.packing-category li {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  padding-left: 1.1rem;
+  position: relative;
+}
+
+.packing-category li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 5px;
+  height: 5px;
+  background: var(--sage);
+  border-radius: 50%;
+}
+
+/* ---------- Trip Planner / Budget ---------- */
+
+.budget-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.budget-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  margin-bottom: 0.4rem;
+}
+
+.budget-bar-label span:first-child {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.budget-bar-amount {
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.budget-bar-track {
+  height: 8px;
+  background: var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.budget-bar-fill {
+  height: 100%;
+  background: var(--rust);
+  border-radius: 4px;
+}
+
+.budget-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 0;
+  border-top: 1.5px solid var(--line);
+  border-bottom: 1.5px solid var(--line);
+  margin-bottom: 1.75rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.budget-total-amount {
+  font-family: var(--font-mono);
+}
+
+.tips-block h3 {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rust);
+  margin: 0 0 1rem;
+}
+
+.tips-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.tips-list li {
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  padding-left: 1.3rem;
+  position: relative;
+}
+
+.tips-list li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: var(--sage);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+  .trip-stub {
+    flex-direction: column;
+  }
+  .stub-tear {
+    border-left: none;
+    border-top: 2px dashed rgba(247,244,238,0.25);
+  }
+  .form-row {
+    flex-direction: column;
+  }
+  .hero {
+    min-height: 44vh;
+  }
+  .timeline {
+    padding-left: 2.5rem;
+  }
+  .timeline-marker {
+    left: -2.5rem;
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+}
+
+/* ---------- PDF export button ---------- */
+
+.pdf-export-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.save-pdf-btn {
+  background: #fff;
+  border: 1.5px solid var(--line);
+  color: var(--navy);
+  padding: 0.65rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.save-pdf-btn:hover:not(:disabled) {
+  border-color: var(--rust);
+  background: var(--paper);
+}
+
+/* ---------- Flights ---------- */
+
+.flights-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.flights-route {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 1.5rem;
+}
+
+.flights-route-arrow {
+  color: var(--rust);
+  font-weight: 400;
+}
+
+.flights-legs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.flight-leg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem;
+  background: var(--paper);
+  border-radius: 10px;
+}
+
+.flight-leg-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rust);
+}
+
+.flight-leg-price {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--navy);
+}
+
+.flight-leg-airlines {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.flight-leg-notes {
+  font-size: 0.8rem;
+  color: var(--sage);
+  margin: 0.2rem 0 0;
+  line-height: 1.4;
+}
+
+.flights-tip {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  background: var(--sand);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin: 0 0 1rem;
+}
+
+.flights-disclaimer {
+  font-size: 0.75rem;
+  color: var(--sage);
+  font-style: italic;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .flights-legs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Food & Drink ---------- */
+
+.dish-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.dish-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.dish-type {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rust);
+}
+
+.dish-card h4 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0.4rem 0 0.5rem;
+}
+
+.dish-card p {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.beverage-row {
+  margin-bottom: 2rem;
+}
+
+.beverage-row h4,
+.meal-cost h4 {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin: 0 0 0.85rem;
+}
+
+.beverage-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.beverage-tag {
+  background: var(--sand);
+  color: var(--ink);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  cursor: default;
+}
+
+.meal-cost {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.75rem;
+}
+
+.meal-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.meal-cost-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem;
+  background: var(--paper);
+  border-radius: 10px;
+}
+
+.meal-name {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rust);
+}
+
+.meal-price {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--navy);
+}
+
+.meal-cost-notes {
+  font-size: 0.8rem;
+  color: var(--sage);
+  margin: 1rem 0 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .meal-cost-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Shopping ---------- */
+
+.shopping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.shopping-item {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
+.shopping-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.shopping-item-header h4 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0;
+}
+
+.shopping-price {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--rust);
+  white-space: nowrap;
+}
+
+.shopping-item p {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0.5rem 0;
+}
+
+.shopping-where {
+  font-size: 0.78rem;
+  color: var(--sage);
+  font-family: var(--font-mono);
+}
