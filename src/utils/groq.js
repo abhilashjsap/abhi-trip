@@ -19,6 +19,36 @@ export const groqClient = new Groq({
 const MODEL = "llama-3.3-70b-versatile";
 
 /**
+ * Thrown when Groq's rate limit (requests/tokens per minute or per day) is
+ * hit. Carries the destination's retry-after hint (in seconds, if Groq
+ * provided one) so the UI can show a genuinely useful wait time instead of
+ * a generic "try again" message.
+ */
+export class RateLimitError extends Error {
+  constructor(message, retryAfterSeconds) {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds || null;
+  }
+}
+
+/**
+ * Parses a Groq "Please try again in 1h47m17.664s" style message into
+ * total seconds, so the UI can format it however it likes.
+ */
+function parseRetryAfter(message) {
+  if (!message) return null;
+  const match = message.match(
+    /try again in\s+(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:([\d.]+)s)?/i
+  );
+  if (!match) return null;
+  const [, h, m, s] = match;
+  const seconds =
+    (Number(h) || 0) * 3600 + (Number(m) || 0) * 60 + (Number(s) || 0);
+  return seconds > 0 ? Math.ceil(seconds) : null;
+}
+
+/**
  * Calls Groq chat completion and returns the raw text content.
  * @param {Object} params
  * @param {string} params.system - system prompt
@@ -57,12 +87,24 @@ export async function generateCompletion({
     return content;
   } catch (err) {
     logger.error("Groq API call failed:", err);
-    throw new Error(
-      err?.message?.includes("401")
-        ? "Invalid Groq API key. Check your .env file."
-        : "Failed to generate response from AI. Please try again."
-    );
+
+    const status = err?.status;
+    const apiMessage = err?.error?.error?.message || err?.message || "";
+
+    if (status === 429 || apiMessage.toLowerCase().includes("rate limit")) {
+      const retryAfterSeconds = parseRetryAfter(apiMessage);
+      throw new RateLimitError(
+        "Groq's daily free-tier limit has been reached for this app.",
+        retryAfterSeconds
+      );
+    }
+
+    if (status === 401 || apiMessage.includes("401")) {
+      throw new Error("Invalid Groq API key. Check your .env file.");
+    }
+
+    throw new Error("Failed to generate response from AI. Please try again.");
   }
 }
 
-export default { groqClient, generateCompletion };
+export default { groqClient, generateCompletion, RateLimitError };

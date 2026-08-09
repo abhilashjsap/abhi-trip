@@ -4,8 +4,18 @@ import TripResult from "./components/TripResult";
 import BudgetWarning from "./components/BudgetWarning";
 import PasswordGate, { isUnlocked } from "./components/PasswordGate";
 import { generateTripPlan, BudgetTooLowError } from "./utils/tripAI";
+import { RateLimitError } from "./utils/groq";
 import logger from "./utils/logger";
 import "./App.css";
+
+function formatWaitTime(seconds) {
+  if (!seconds) return null;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m} min`;
+  return `${seconds}s`;
+}
 
 export default function App() {
   const [unlocked, setUnlocked] = useState(false);
@@ -31,6 +41,14 @@ export default function App() {
       if (err instanceof BudgetTooLowError) {
         logger.info("Budget infeasible:", err.feasibility);
         setFeasibility(err.feasibility);
+      } else if (err instanceof RateLimitError) {
+        logger.error("Rate limit hit:", err);
+        const wait = formatWaitTime(err.retryAfterSeconds);
+        setError(
+          `We've hit the AI's daily free usage limit for this app.${
+            wait ? ` It resets in about ${wait}.` : " It resets daily."
+          } Please try again then.`
+        );
       } else {
         logger.error("Trip generation failed:", err);
         setError(err.message || "Something went wrong. Please try again.");

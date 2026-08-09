@@ -7,6 +7,7 @@ import Flights from "./Flights";
 import FoodAndDrink from "./FoodAndDrink";
 import Shopping from "./Shopping";
 import CurrencyInfo from "./CurrencyInfo";
+import Weather from "./Weather";
 import TripStub from "./TripStub";
 import { exportElementToPdf } from "../utils/pdfExport";
 import logger from "../utils/logger";
@@ -17,7 +18,7 @@ export default function TripResult({ trip, onReset }) {
 
   if (!trip) return null;
 
-  const { input, itinerary, packingList, planner, attractions, heroImage, flights, food, shopping, currencyInfo } = trip;
+  const { input, itinerary, packingList, planner, attractions, heroImage, flights, food, shopping, currencyInfo, weather } = trip;
 
   const handleSavePdf = async () => {
     setExporting(true);
@@ -68,6 +69,7 @@ export default function TripResult({ trip, onReset }) {
         </div>
 
         <Attractions attractions={attractions} />
+        <Weather weather={weather} />
         <Itinerary itinerary={itinerary} />
         <Flights flights={flights} currency={input?.currency} />
         <CurrencyInfo currencyInfo={currencyInfo} currency={input?.currency} />

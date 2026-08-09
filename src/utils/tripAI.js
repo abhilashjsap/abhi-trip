@@ -22,6 +22,45 @@ const TRIP_TYPE_LABELS = {
   solo: "a solo traveler (safety tips, easy-to-navigate solo-friendly spots, opportunities to meet people)",
 };
 
+export const BUDGET_CATEGORIES = {
+  cheapest: {
+    label: "Cheapest",
+    emoji: "🪙",
+    description: "Bare minimum, lowest-cost options",
+    tier: "hostels/dorms or the cheapest guesthouses, street food and self-catering, public transport only, free/low-cost attractions",
+  },
+  budget: {
+    label: "Budget",
+    emoji: "💰",
+    description: "Affordable but reasonably comfortable",
+    tier: "budget hotels or private guesthouse rooms, mix of street food and cheap sit-down meals, mostly public transport with occasional taxis, mostly paid attractions",
+  },
+  "mid-range": {
+    label: "Mid-range",
+    emoji: "💼",
+    description: "Comfortable, good hotels and experiences",
+    tier: "3-star hotels, sit-down restaurants, mix of taxis/rideshare and public transport, most attractions and a couple of paid experiences",
+  },
+  premium: {
+    label: "Premium",
+    emoji: "✨",
+    description: "High comfort, better hotels, more convenience",
+    tier: "4-star hotels, good restaurants, private transport/rideshare as default, most attractions plus premium experiences",
+  },
+  luxury: {
+    label: "Luxury",
+    emoji: "🥂",
+    description: "5-star hotels, fine dining, private experiences",
+    tier: "5-star hotels, fine dining, private drivers/guides, premium and private experiences",
+  },
+  "ultra-luxury": {
+    label: "Ultra-luxury",
+    emoji: "👑",
+    description: "Top-end hotels, suites/villas, private everything",
+    tier: "top-end suites/villas/resorts, fine dining and private chefs where relevant, private drivers and guides throughout, exclusive/private experiences",
+  },
+};
+
 /**
  * Custom error thrown when the AI determines the budget is not realistically
  * sufficient for the trip. Carries structured data so the UI can render a
@@ -45,6 +84,102 @@ function cleanJsonResponse(raw) {
 }
 
 /**
+ * Estimates a realistic total trip budget for a given comfort category
+ * (e.g. "mid-range"). Used to pre-fill the amount field when the user picks
+ * a category instead of typing a number. Since the category itself defines
+ * what's "realistic," this is NOT run through the feasibility check.
+ */
+export async function estimateBudgetForCategory({
+  destination,
+  departureCity,
+  currency,
+  pax,
+  days,
+  flightsIncluded,
+  budgetCategory,
+}) {
+  const category = BUDGET_CATEGORIES[budgetCategory];
+  if (!category) {
+    throw new Error("Unknown budget category.");
+  }
+
+  const prompt = `
+Estimate a realistic TOTAL trip cost for the following, at a "${category.label}"
+comfort level: ${category.tier}.
+
+- Destination: ${destination}
+- Departure city: ${flightsIncluded ? departureCity : "N/A (flights excluded)"}
+- Travelers: ${pax}
+- Duration: ${days} days (${Math.max(days - 1, 1)} nights of accommodation)
+- Flights included in total: ${flightsIncluded ? "yes" : "no"}
+
+Work this out category by category (accommodation is per ROOM per night — work
+out how many rooms ${pax} traveler(s) actually need, don't multiply room cost
+by every traveler), being careful with your multiplication.
+
+Respond ONLY with JSON in this exact shape:
+{
+  "breakdown": [
+    { "category": "Accommodation", "perUnitCost": 0, "unit": "per room per night", "units": 0, "subtotal": 0 },
+    { "category": "Food", "perUnitCost": 0, "unit": "per person per day", "units": 0, "subtotal": 0 },
+    { "category": "Local transport", "perUnitCost": 0, "unit": "per person per day", "units": 0, "subtotal": 0 },
+    { "category": "Activities/experiences", "perUnitCost": 0, "unit": "per person for the trip", "units": 0, "subtotal": 0 }${
+      flightsIncluded
+        ? `,\n    { "category": "Flights", "perUnitCost": 0, "unit": "per person round-trip", "units": ${pax}, "subtotal": 0 }`
+        : ""
+    }
+  ],
+  "estimatedBudget": 0,
+  "currency": "${currency}"
+}
+
+Rules:
+- Each "subtotal" MUST equal perUnitCost × units — check your own multiplication.
+- estimatedBudget MUST equal the sum of all "subtotal" values. Add them up yourself.
+- All figures in ${currency}, for the TOTAL trip (all ${pax} traveler(s), all ${days} day(s)) unless a line item says otherwise.
+`.trim();
+
+  const raw = await generateCompletion({
+    system: SYSTEM_PROMPT,
+    prompt,
+    temperature: 0.3,
+    maxTokens: 400,
+    json: true,
+  });
+
+  let result;
+  try {
+    result = JSON.parse(cleanJsonResponse(raw));
+  } catch (err) {
+    logger.error("Failed to parse budget category estimate:", err, raw);
+    throw new Error("Couldn't estimate a budget for that category. Please try again.");
+  }
+
+  // Recompute ourselves — same reasoning as the feasibility check: trust
+  // per-unit figures, not the model's own final arithmetic.
+  const breakdown = Array.isArray(result.breakdown) ? result.breakdown : [];
+  const recomputed = breakdown.map((line) => {
+    const perUnit = Number(line.perUnitCost);
+    const units = Number(line.units);
+    const subtotal =
+      Number.isFinite(perUnit) && Number.isFinite(units)
+        ? perUnit * units
+        : Number(line.subtotal) || 0;
+    return { ...line, subtotal };
+  });
+
+  const total = recomputed.reduce((sum, line) => sum + (Number(line.subtotal) || 0), 0);
+  const fallback = Number(result.estimatedBudget);
+  const estimatedBudget = recomputed.length > 0 && total > 0 ? total : fallback;
+
+  return {
+    estimatedBudget: Number.isFinite(estimatedBudget) ? Math.round(estimatedBudget) : null,
+    breakdown: recomputed,
+    currency: result.currency || currency,
+  };
+}
+
+/**
  * Step 1: fast, cheap feasibility check. Asks the model whether the given
  * budget can realistically cover the trip (stay + food + local transport +
  * flights if included) for this many people/days. This runs BEFORE the
@@ -60,27 +195,45 @@ async function checkBudgetFeasibility({
   flightsIncluded,
 }) {
   const prompt = `
-Assess whether this trip budget is realistic. Be strict and honest — do not
-be generous or optimistic. Base this on real typical costs (budget-tier
-accommodation, local food, local transport${flightsIncluded ? ", and round-trip flights" : ""}).
+Assess the realistic minimum cost for this trip. Be strict and honest — do not
+be generous or optimistic, but also do not inflate numbers. Base this on real
+typical costs for ${destination} at budget-tier (not luxury) choices.
 
 - Destination: ${destination}
 - Departure city: ${flightsIncluded ? departureCity : "N/A (flights excluded)"}
 - Total budget: ${budget} ${currency}
 - Travelers: ${pax}
-- Duration: ${days} days
+- Duration: ${days} days (so ${Math.max(days - 1, 1)} nights of accommodation)
 - Flights included in budget: ${flightsIncluded ? "yes" : "no"}
+
+Work this out category by category, being careful and explicit about whether
+a figure is PER PERSON or PER GROUP, and whether it's PER NIGHT/DAY or a TOTAL.
+Accommodation is normally priced PER ROOM PER NIGHT (one room can sleep 2-3
+people, so do not multiply room cost by every traveler) — work out how many
+rooms ${pax} traveler(s) actually need.
 
 Respond ONLY with JSON in this exact shape:
 {
+  "breakdown": [
+    { "category": "Accommodation", "perUnitCost": 0, "unit": "per room per night", "units": 0, "subtotal": 0 },
+    { "category": "Food", "perUnitCost": 0, "unit": "per person per day", "units": 0, "subtotal": 0 },
+    { "category": "Local transport", "perUnitCost": 0, "unit": "per person per day", "units": 0, "subtotal": 0 },
+    { "category": "Activities/entry fees", "perUnitCost": 0, "unit": "per person for the trip", "units": 0, "subtotal": 0 }${
+      flightsIncluded
+        ? `,\n    { "category": "Flights", "perUnitCost": 0, "unit": "per person round-trip", "units": ${pax}, "subtotal": 0 }`
+        : ""
+    }
+  ],
   "minimumRealisticBudget": 0,
   "currency": "${currency}",
-  "reason": "1-2 sentences explaining the cost estimate, mentioning the biggest cost driver"
+  "reason": "1-2 sentences explaining the total, mentioning the biggest cost driver"
 }
 
-minimumRealisticBudget is the TOTAL minimum for all ${pax} traveler(s) for all ${days} day(s),
-in ${currency}, using budget-tier (not luxury) choices. Round to a sensible number.
-Do not judge feasibility yourself — just give the honest minimum figure.
+Rules:
+- Each "subtotal" MUST equal perUnitCost × units — check your own multiplication.
+- minimumRealisticBudget MUST equal the sum of all "subtotal" values in breakdown. Add them up yourself, don't estimate separately.
+- All figures in ${currency}, for the TOTAL trip (all ${pax} traveler(s), all ${days} day(s)) unless a line item says otherwise.
+- Do not judge feasibility yourself — just give the honest, correctly-summed minimum figure.
 `.trim();
 
   const raw = await generateCompletion({
@@ -100,7 +253,31 @@ Do not judge feasibility yourself — just give the honest minimum figure.
     return { feasible: true };
   }
 
-  const minimum = Number(result.minimumRealisticBudget);
+  // Never trust a single top-line total from the model — recompute it
+  // ourselves from the itemized breakdown (perUnitCost × units per line),
+  // since LLMs reliably state correct per-unit figures but can still botch
+  // the multiplication/summation step (e.g. multiplying per-room hotel cost
+  // by every traveler instead of by number of rooms).
+  const breakdown = Array.isArray(result.breakdown) ? result.breakdown : [];
+  const recomputedSubtotals = breakdown.map((line) => {
+    const perUnit = Number(line.perUnitCost);
+    const units = Number(line.units);
+    const computedSubtotal =
+      Number.isFinite(perUnit) && Number.isFinite(units)
+        ? perUnit * units
+        : Number(line.subtotal) || 0;
+    return { ...line, subtotal: computedSubtotal };
+  });
+
+  const recomputedTotal = recomputedSubtotals.reduce(
+    (sum, line) => sum + (Number(line.subtotal) || 0),
+    0
+  );
+
+  const fallback = Number(result.minimumRealisticBudget);
+  const minimum = recomputedSubtotals.length > 0 && recomputedTotal > 0
+    ? recomputedTotal
+    : fallback;
 
   // Decide feasibility ourselves from the numbers — never trust an LLM's own
   // true/false verdict on a comparison it already computed the inputs for.
@@ -110,7 +287,8 @@ Do not judge feasibility yourself — just give the honest minimum figure.
 
   return {
     feasible,
-    minimumRealisticBudget: Number.isFinite(minimum) ? minimum : null,
+    minimumRealisticBudget: Number.isFinite(minimum) ? Math.round(minimum) : null,
+    breakdown: recomputedSubtotals,
     currency: result.currency || currency,
     reason: result.reason,
   };
@@ -125,13 +303,19 @@ function buildPrompt({
   days,
   flightsIncluded,
   tripType,
+  budgetCategory,
 }) {
   const tripTypeContext = TRIP_TYPE_LABELS[tripType] || "a general traveler";
+  const categoryInfo = BUDGET_CATEGORIES[budgetCategory];
 
   return `
 Plan a trip with these details:
 - Destination: ${destination}
-- Total budget: ${budget} ${currency}
+- Total budget: ${budget} ${currency}${
+    categoryInfo
+      ? ` (this is a "${categoryInfo.label}" comfort-level trip: ${categoryInfo.tier}. Choose hotels, restaurants, and transport that genuinely match this tier.)`
+      : ""
+  }
 - Travelers: ${pax}
 - Trip type: this trip is for ${tripTypeContext}. Tailor the itinerary, activity picks, and tips to suit this group.
 - Duration: ${days} days
@@ -144,6 +328,13 @@ Plan a trip with these details:
 Respond ONLY with a JSON object in this exact shape:
 
 {
+  "weather": {
+    "months": [
+      { "month": "January", "avgHighC": 0, "avgLowC": 0, "conditions": "e.g. Hot and humid, Cool and dry, Monsoon rains", "rating": "best | good | okay | avoid", "bestFor": "1 short sentence on what's best to do/try that month specifically — a seasonal activity, festival/event, or seasonal food/produce at its peak, or null if nothing month-specific stands out" }
+    ],
+    "bestMonthsSummary": "1-2 sentences naming the best window(s) to visit and why",
+    "avoidMonthsSummary": "1-2 sentences on months to avoid and why (e.g. monsoon, extreme heat), or null if there's no notably bad time"
+  },
   "itinerary": [
     {
       "day": 1,
@@ -217,7 +408,8 @@ Respond ONLY with a JSON object in this exact shape:
     "isForeign": true or false,
     "localCurrencyName": "e.g. South Korean Won",
     "localCurrencyCode": "e.g. KRW",
-    "approxExchangeRate": "e.g. 1 ${currency} = X KRW (approximate, mention rates fluctuate)",
+    "oneUnitOfInputCurrencyInLocal": 0,
+    "exchangeRateNote": "approximate, rates fluctuate — 1-2 words max, e.g. 'approx.'",
     "recommendation": "carry-cash | get-local-currency | card-friendly",
     "recommendationReason": "1-2 sentences on why, specific to ${destination}",
     "airportExchangeWarning": "1-2 sentences on whether departure/arrival airport currency exchange counters are notably costly here, or null if not a particular concern",
@@ -227,6 +419,10 @@ Respond ONLY with a JSON object in this exact shape:
 }
 
 Rules:
+- weather.months must have exactly 12 entries, one per calendar month (January through December), with realistic typical temperature averages in Celsius for ${destination}.
+- rating reflects how good that month is for tourism specifically (weather + crowds + typical conditions), not just raw temperature — "best" for the ideal window, "avoid" for genuinely bad months (monsoon, extreme heat/cold, etc.), "good"/"okay" in between.
+- bestFor should be genuinely month-specific (a real festival/event that happens then, a seasonal fruit/dish in season, a seasonal activity like cherry blossoms or whale watching) — don't repeat generic sightseeing advice across every month. Use null if nothing distinct applies that month.
+- Base weather on ${destination}'s real typical climate — these are historical seasonal averages, not a live forecast.
 - budgetBreakdown amounts must sum to approximately the total budget (${budget} ${currency}). If flights are included, the "Flights" category amount should roughly match the outbound+return estimate total for all ${pax} traveler(s).
 - If flights are excluded, omit or zero the "Flights" category and set "flights" to null.
 - itinerary must have exactly ${days} day entries, with activity choices suited to ${tripTypeContext}.
@@ -237,6 +433,7 @@ Rules:
 - mealCostEstimate amounts are PER PERSON, per meal, in ${currency}, realistic for ${destination}'s cost of living.
 - shopping should list 4-6 real local products/crafts/souvenirs genuinely associated with ${destination}.
 - currencyInfo.isForeign should be false only if ${destination}'s local currency IS ${currency} (e.g. destination and currency are the same country/region). If false, you may omit the other currencyInfo fields or set them to null.
+- oneUnitOfInputCurrencyInLocal must be a plain number: how many units of the local currency you get for 1 unit of ${currency} (e.g. if 1 INR = 18 MYR-equivalent-in-cents... just give the direct numeric rate, however small or large).
 - If isForeign is true, give a genuinely useful, destination-specific exchange recommendation — not generic advice. Be honest if card usage is fine and cash isn't really needed.
 - Keep JSON valid — no trailing commas, no comments.
 `.trim();
@@ -252,12 +449,18 @@ Rules:
  * @returns {Promise<Object>} parsed trip plan with an id
  */
 export async function generateTripPlan(formData) {
-  logger.info("Checking budget feasibility for", formData.destination);
+  // If the amount came from a picked category (not hand-typed), skip the
+  // feasibility check entirely — the category itself already defines what's
+  // realistic, and re-checking it against itself is redundant (and risks
+  // the same kind of arithmetic mismatch we've already seen elsewhere).
+  if (!formData.budgetFromCategory) {
+    logger.info("Checking budget feasibility for", formData.destination);
 
-  const feasibility = await checkBudgetFeasibility(formData);
+    const feasibility = await checkBudgetFeasibility(formData);
 
-  if (feasibility.feasible === false) {
-    throw new BudgetTooLowError(feasibility);
+    if (feasibility.feasible === false) {
+      throw new BudgetTooLowError(feasibility);
+    }
   }
 
   const prompt = buildPrompt(formData);
@@ -268,7 +471,7 @@ export async function generateTripPlan(formData) {
     system: SYSTEM_PROMPT,
     prompt,
     temperature: 0.7,
-    maxTokens: 4096,
+    maxTokens: 6000,
     json: true,
   });
 
