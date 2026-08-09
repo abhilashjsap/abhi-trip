@@ -2,9 +2,17 @@ import { useState, useEffect } from "react";
 import TripForm from "./components/TripForm";
 import TripResult from "./components/TripResult";
 import BudgetWarning from "./components/BudgetWarning";
+import TripHistory from "./components/TripHistory";
+import UsageDashboard from "./components/UsageDashboard";
 import PasswordGate, { isUnlocked } from "./components/PasswordGate";
 import { generateTripPlan, BudgetTooLowError } from "./utils/tripAI";
 import { RateLimitError } from "./utils/groq";
+import {
+  cacheCurrentTrip,
+  loadCachedTrip,
+  clearCachedTrip,
+  addTripToHistory,
+} from "./utils/tripStorage";
 import logger from "./utils/logger";
 import "./App.css";
 
@@ -24,10 +32,22 @@ export default function App() {
   const [error, setError] = useState("");
   const [feasibility, setFeasibility] = useState(null);
   const [lastInput, setLastInput] = useState(null);
+  const [view, setView] = useState("form"); // "form" | "history"
+  const [historyKey, setHistoryKey] = useState(0);
 
   useEffect(() => {
     setUnlocked(isUnlocked());
   }, []);
+
+  // Reload-safe: on first mount, restore whatever trip was showing before
+  // a reload, instead of losing it and forcing a re-generate.
+  useEffect(() => {
+    if (unlocked && !trip) {
+      const cached = loadCachedTrip();
+      if (cached) setTrip(cached);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlocked]);
 
   const handleGenerate = async (formData) => {
     setLoading(true);
@@ -37,6 +57,8 @@ export default function App() {
     try {
       const result = await generateTripPlan(formData);
       setTrip(result);
+      cacheCurrentTrip(result);
+      addTripToHistory(result);
     } catch (err) {
       if (err instanceof BudgetTooLowError) {
         logger.info("Budget infeasible:", err.feasibility);
@@ -62,10 +84,26 @@ export default function App() {
     setTrip(null);
     setError("");
     setFeasibility(null);
+    clearCachedTrip();
+    setView("form");
   };
 
   const handleAdjust = () => {
     setFeasibility(null);
+  };
+
+  const handleUpdateItinerary = (nextItinerary) => {
+    if (!trip) return;
+    const updated = { ...trip, itinerary: nextItinerary };
+    setTrip(updated);
+    cacheCurrentTrip(updated);
+    addTripToHistory(updated); // keep history entry in sync with edits
+  };
+
+  const handleSelectFromHistory = (selectedTrip) => {
+    setTrip(selectedTrip);
+    cacheCurrentTrip(selectedTrip);
+    setView("form");
   };
 
   if (!unlocked) {
@@ -100,7 +138,11 @@ export default function App() {
   if (trip) {
     return (
       <div className="app-container">
-        <TripResult trip={trip} onReset={handleReset} />
+        <TripResult
+          trip={trip}
+          onReset={handleReset}
+          onUpdateItinerary={handleUpdateItinerary}
+        />
       </div>
     );
   }
@@ -116,8 +158,34 @@ export default function App() {
             We'll build the itinerary, the packing list, and the numbers.
           </p>
         </div>
-        <TripForm onSubmit={handleGenerate} loading={loading} />
-        {error && <p className="form-error">{error}</p>}
+
+        <div className="landing-toolbar">
+          <UsageDashboard />
+          {view === "form" && (
+            <button
+              type="button"
+              className="history-link-btn"
+              onClick={() => setView("history")}
+            >
+              View past trips
+            </button>
+          )}
+        </div>
+
+        {view === "history" ? (
+          <TripHistory
+            key={historyKey}
+            onSelect={handleSelectFromHistory}
+            onClose={() => setView("form")}
+            refreshKey={historyKey}
+            onRefresh={() => setHistoryKey((k) => k + 1)}
+          />
+        ) : (
+          <>
+            <TripForm onSubmit={handleGenerate} loading={loading} />
+            {error && <p className="form-error">{error}</p>}
+          </>
+        )}
       </div>
     </div>
   );

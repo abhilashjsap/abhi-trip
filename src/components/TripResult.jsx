@@ -12,7 +12,7 @@ import TripStub from "./TripStub";
 import { exportElementToPdf } from "../utils/pdfExport";
 import logger from "../utils/logger";
 
-export default function TripResult({ trip, onReset }) {
+export default function TripResult({ trip, onReset, onUpdateItinerary }) {
   const captureRef = useRef(null);
   const [exporting, setExporting] = useState(false);
 
@@ -70,7 +70,7 @@ export default function TripResult({ trip, onReset }) {
 
         <Attractions attractions={attractions} />
         <Weather weather={weather} />
-        <Itinerary itinerary={itinerary} />
+        <Itinerary itinerary={itinerary} onUpdateItinerary={onUpdateItinerary} />
         <Flights flights={flights} currency={input?.currency} />
         <CurrencyInfo currencyInfo={currencyInfo} currency={input?.currency} />
         <FoodAndDrink food={food} currency={input?.currency} />
