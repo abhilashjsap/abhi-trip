@@ -84,6 +84,14 @@ export async function generateCompletion({
       throw new Error("Empty response from Groq");
     }
 
+    if (completion.usage) {
+      logger.info(
+        `Groq usage — prompt: ${completion.usage.prompt_tokens}, ` +
+          `completion: ${completion.usage.completion_tokens}, ` +
+          `total: ${completion.usage.total_tokens}`
+      );
+    }
+
     return content;
   } catch (err) {
     logger.error("Groq API call failed:", err);
