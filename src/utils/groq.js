@@ -16,7 +16,11 @@ export const groqClient = new Groq({
   dangerouslyAllowBrowser: true,
 });
 
-const MODEL = "llama-3.3-70b-versatile";
+// Two separate models, on two separate Groq rate-limit pools. Splitting
+// calls across them means the small/simple calls no longer eat into the
+// same daily token budget as the big plan generation.
+export const MODEL_LARGE = "llama-3.3-70b-versatile"; // main plan: needs real reasoning quality
+export const MODEL_SMALL = "llama-3.1-8b-instant"; // feasibility/category estimates: simple JSON+arithmetic, own quota pool
 
 /**
  * Thrown when Groq's rate limit (requests/tokens per minute or per day) is
@@ -56,6 +60,7 @@ function parseRetryAfter(message) {
  * @param {number} [params.temperature=0.7]
  * @param {number} [params.maxTokens=4096]
  * @param {boolean} [params.json=false] - request JSON mode
+ * @param {string} [params.model=MODEL_LARGE] - which Groq model to use
  */
 export async function generateCompletion({
   system,
@@ -63,12 +68,13 @@ export async function generateCompletion({
   temperature = 0.7,
   maxTokens = 4096,
   json = false,
+  model = MODEL_LARGE,
 }) {
   try {
-    logger.debug("Calling Groq", { model: MODEL, json });
+    logger.debug("Calling Groq", { model, json });
 
     const completion = await groqClient.chat.completions.create({
-      model: MODEL,
+      model,
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt },
@@ -86,7 +92,7 @@ export async function generateCompletion({
 
     if (completion.usage) {
       logger.info(
-        `Groq usage — prompt: ${completion.usage.prompt_tokens}, ` +
+        `Groq usage [${model}] — prompt: ${completion.usage.prompt_tokens}, ` +
           `completion: ${completion.usage.completion_tokens}, ` +
           `total: ${completion.usage.total_tokens}`
       );
@@ -115,4 +121,4 @@ export async function generateCompletion({
   }
 }
 
-export default { groqClient, generateCompletion, RateLimitError };
+export default { groqClient, generateCompletion, RateLimitError, MODEL_LARGE, MODEL_SMALL };

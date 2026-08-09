@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion } from "./groq";
+import { generateCompletion, MODEL_SMALL } from "./groq";
 import { getDestinationHero, getAttractionImages } from "./unsplash";
 import logger from "./logger";
 
@@ -145,6 +145,7 @@ Rules:
     temperature: 0.3,
     maxTokens: 400,
     json: true,
+    model: MODEL_SMALL,
   });
 
   let result;
@@ -242,6 +243,7 @@ Rules:
     temperature: 0.3,
     maxTokens: 400,
     json: true,
+    model: MODEL_SMALL,
   });
 
   let result;
