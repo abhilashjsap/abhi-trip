@@ -132,6 +132,16 @@ export async function generateCompletion({
   const maxRetries = 2;
   let lastErr;
 
+  // gpt-oss models are reasoning models — by default they spend part of
+  // the token budget "thinking" before writing the actual answer. Left at
+  // Groq's default ("medium"), a tight max_tokens budget can be entirely
+  // consumed by reasoning, leaving nothing for the JSON output itself
+  // (surfaces as a 400 json_validate_failed with an EMPTY failed_generation
+  // — a known Groq gpt-oss quirk, not a prompt problem). "low" keeps
+  // reasoning brief so more of the budget goes to the actual response,
+  // which matters most for our small, simple JSON-only calls.
+  const isReasoningModel = model.startsWith("openai/gpt-oss");
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       logger.debug("Calling Groq", { model, json, attempt: attempt + 1 });
@@ -145,6 +155,7 @@ export async function generateCompletion({
         temperature,
         max_tokens: maxTokens,
         ...(json ? { response_format: { type: "json_object" } } : {}),
+        ...(isReasoningModel ? { reasoning_effort: "low" } : {}),
       });
 
       const content = completion.choices?.[0]?.message?.content;
