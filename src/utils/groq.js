@@ -19,8 +19,10 @@ export const groqClient = new Groq({
 // Two separate models, on two separate Groq rate-limit pools. Splitting
 // calls across them means the small/simple calls no longer eat into the
 // same daily token budget as the big plan generation.
-export const MODEL_LARGE = "llama-3.3-70b-versatile"; // main plan: needs real reasoning quality
-export const MODEL_SMALL = "llama-3.1-8b-instant"; // feasibility/category estimates: simple JSON+arithmetic, own quota pool
+// NOTE: Groq deprecated llama-3.3-70b-versatile and llama-3.1-8b-instant
+// (shut down Aug 16, 2026) — migrated to their official replacements.
+export const MODEL_LARGE = "openai/gpt-oss-120b"; // main plan: needs real reasoning quality
+export const MODEL_SMALL = "openai/gpt-oss-20b"; // feasibility/category estimates: simple JSON+arithmetic, own quota pool
 
 const USAGE_STORAGE_KEY = "abhitrip_usage_log";
 
