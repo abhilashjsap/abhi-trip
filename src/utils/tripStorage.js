@@ -1,7 +1,12 @@
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion, MODEL_SMALL } from "./groq";
+import { generateCompletion, MODEL_LARGE, MODEL_SMALL } from "./groq";
 import { getDestinationHero, getAttractionImages } from "./unsplash";
 import logger from "./logger";
+
+export const DAILY_TOKEN_BUDGET = {
+  [MODEL_LARGE]: 200000,
+  [MODEL_SMALL]: 1000000,
+};
 
 const SYSTEM_PROMPT = `You are AbhiTrip, an expert AI travel planner. You produce
 detailed, practical, and realistic trip plans. You ALWAYS respond with valid
@@ -510,4 +515,69 @@ export async function generateTripPlan(formData) {
   };
 }
 
-export default { generateTripPlan, BudgetTooLowError };
+const CURRENT_TRIP_KEY = "abhi-trip-current";
+const TRIP_HISTORY_KEY = "abhi-trip-history";
+
+function readStoredJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (err) {
+    logger.error(`Failed to read stored data for ${key}:`, err);
+    return fallback;
+  }
+}
+
+function writeStoredJson(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    logger.error(`Failed to write stored data for ${key}:`, err);
+  }
+}
+
+export function cacheCurrentTrip(trip) {
+  writeStoredJson(CURRENT_TRIP_KEY, trip);
+}
+
+export function loadCachedTrip() {
+  return readStoredJson(CURRENT_TRIP_KEY, null);
+}
+
+export function clearCachedTrip() {
+  try {
+    localStorage.removeItem(CURRENT_TRIP_KEY);
+  } catch (err) {
+    logger.error("Failed to clear cached trip:", err);
+  }
+}
+
+export function getTripHistory() {
+  const history = readStoredJson(TRIP_HISTORY_KEY, []);
+  return Array.isArray(history) ? history : [];
+}
+
+export function addTripToHistory(trip) {
+  if (!trip?.id) return;
+
+  const history = getTripHistory().filter((savedTrip) => savedTrip.id !== trip.id);
+  writeStoredJson(TRIP_HISTORY_KEY, [trip, ...history]);
+}
+
+export function removeTripFromHistory(tripId) {
+  writeStoredJson(
+    TRIP_HISTORY_KEY,
+    getTripHistory().filter((trip) => trip.id !== tripId)
+  );
+}
+
+export default {
+  generateTripPlan,
+  BudgetTooLowError,
+  cacheCurrentTrip,
+  loadCachedTrip,
+  clearCachedTrip,
+  addTripToHistory,
+  getTripHistory,
+  removeTripFromHistory,
+};
