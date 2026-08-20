@@ -8,9 +8,12 @@ const MAX_HISTORY = 20;
 // only for the in-app usage indicator — Groq is the actual source of
 // truth, this is a best-effort local estimate so the UI can warn before
 // a request fails outright.
+// NOTE: gpt-oss-120b/20b free tier is TPD-generous (200k) but tight on
+// TPM (8,000/min) and RPD (1,000/day) — RPD is the more likely wall to
+// hit for a low-volume app like this, TPD is unlikely to bind first.
 export const DAILY_TOKEN_BUDGET = {
-  "llama-3.3-70b-versatile": 100000,
-  "llama-3.1-8b-instant": 500000, // 8b's pool is request-capped (14,400 RPD) more than token-capped in practice
+  "openai/gpt-oss-120b": 200000,
+  "openai/gpt-oss-20b": 200000,
 };
 
 /**
