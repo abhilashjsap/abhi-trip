@@ -62,6 +62,9 @@ export class RateLimitError extends Error {
  */
 function isRetryableError(status) {
   if (status === 429 || status === 401 || status === 403) return false;
+  // 503 is Gemini's "model temporarily overloaded" response — explicitly
+  // described as usually transient, so it's worth retrying like any other
+  // 5xx.
   if (typeof status === "number" && status >= 500) return true;
   // Network-level failures (fetch threw, no response at all) arrive here
   // with status undefined.
@@ -102,7 +105,11 @@ export async function generateCompletion({
   json = false,
   model = MODEL_LARGE,
 }) {
-  const maxRetries = 2;
+  // Gemini's 503 "model overloaded" errors are explicitly billed as usually
+  // temporary, so this gets a bit more patience than a plain network blip:
+  // 3 retries with growing backoff (700ms/1400ms/2800ms, ~4.9s total) before
+  // giving up.
+  const maxRetries = 3;
   let lastErr;
   let lastStatus;
 
@@ -146,7 +153,7 @@ export async function generateCompletion({
       lastStatus = err?.status;
 
       if (attempt < maxRetries && isRetryableError(lastStatus)) {
-        const backoffMs = 500 * 2 ** attempt; // 500ms, then 1000ms
+        const backoffMs = 700 * 2 ** attempt; // 700ms, 1400ms, 2800ms
         logger.error(
           `Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${backoffMs}ms:`,
           err
@@ -169,6 +176,12 @@ export async function generateCompletion({
 
   if (lastStatus === 401 || lastStatus === 403 || lastStatus === 500) {
     throw new Error("The AI service isn't configured correctly. Check the server's Gemini API key.");
+  }
+
+  if (lastStatus === 503) {
+    throw new Error(
+      "Gemini's servers are temporarily overloaded. This usually clears up within a minute or two — please try again shortly."
+    );
   }
 
   throw new Error("Failed to generate response from AI. Please try again.");
