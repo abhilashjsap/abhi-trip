@@ -53,5 +53,3 @@ export async function exportElementToPdf(element, filename = "trip") {
     throw new Error("Couldn't generate the PDF. Please try again.");
   }
 }
-
-export default { exportElementToPdf };

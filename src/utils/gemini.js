@@ -173,5 +173,3 @@ export async function generateCompletion({
 
   throw new Error("Failed to generate response from AI. Please try again.");
 }
-
-export default { generateCompletion, RateLimitError, MODEL_LARGE, MODEL_SMALL, getTodayUsage };

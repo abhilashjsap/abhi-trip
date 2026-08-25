@@ -62,5 +62,3 @@ export async function searchPlaces(query) {
     return [];
   }
 }
-
-export default { searchPlaces };

@@ -509,5 +509,3 @@ export async function generateTripPlan(formData) {
     heroImage: hero,
   };
 }
-
-export default { generateTripPlan, BudgetTooLowError };

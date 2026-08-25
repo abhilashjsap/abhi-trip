@@ -88,5 +88,3 @@ export async function getAttractionImages(attractionNames, destination) {
   );
   return results;
 }
-
-export default { searchPhotos, getDestinationHero, getAttractionImages };
