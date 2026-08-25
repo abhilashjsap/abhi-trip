@@ -1,4 +1,4 @@
-import { getTodayUsage, MODEL_LARGE } from "../utils/groq";
+import { getTodayUsage, MODEL_LARGE } from "../utils/gemini";
 import { DAILY_TOKEN_BUDGET } from "../utils/tripStorage";
 
 // Rough tokens-per-full-trip-generation estimate (the one call that matters

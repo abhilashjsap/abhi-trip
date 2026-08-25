@@ -6,7 +6,7 @@ import TripHistory from "./components/TripHistory";
 import UsageDashboard from "./components/UsageDashboard";
 import PasswordGate, { isUnlocked } from "./components/PasswordGate";
 import { generateTripPlan, BudgetTooLowError } from "./utils/tripAI";
-import { RateLimitError } from "./utils/groq";
+import { RateLimitError } from "./utils/gemini";
 import {
   cacheCurrentTrip,
   loadCachedTrip,

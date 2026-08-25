@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion, MODEL_SMALL } from "./groq";
+import { generateCompletion, MODEL_SMALL } from "./gemini";
 import { getDestinationHero, getAttractionImages } from "./unsplash";
 import logger from "./logger";
 
@@ -473,11 +473,7 @@ export async function generateTripPlan(formData) {
     system: SYSTEM_PROMPT,
     prompt,
     temperature: 0.7,
-    // Groq's TPM limit for openai/gpt-oss-120b on this tier is 8000, and it
-    // counts prompt + maxTokens against that limit (not just actual usage).
-    // This prompt runs ~2100-2300 tokens, so 6000 pushed the request over
-    // 8000 and got rejected outright with a 413 before the model even ran.
-    maxTokens: 5400,
+    maxTokens: 6000,
     json: true,
   });
 

@@ -1,10 +1,15 @@
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion, MODEL_LARGE, MODEL_SMALL } from "./groq";
+import { generateCompletion, MODEL_LARGE, MODEL_SMALL } from "./gemini";
 import { getDestinationHero, getAttractionImages } from "./unsplash";
 import logger from "./logger";
 
+// Google no longer publishes fixed per-model free-tier numbers on
+// ai.google.dev — check https://aistudio.google.com/rate-limit for this
+// account's actual live limits. These are rough placeholders (roughly
+// requests/day x tokens/call) just to keep the "trips left today" meter
+// in the right ballpark rather than exact.
 export const DAILY_TOKEN_BUDGET = {
-  [MODEL_LARGE]: 200000,
+  [MODEL_LARGE]: 2000000,
   [MODEL_SMALL]: 1000000,
 };
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { estimateBudgetForCategory, BUDGET_CATEGORIES } from "../utils/tripAI";
-import { RateLimitError } from "../utils/groq";
+import { RateLimitError } from "../utils/gemini";
 import DestinationAutocomplete from "./DestinationAutocomplete";
 import logger from "../utils/logger";
 
