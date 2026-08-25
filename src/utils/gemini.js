@@ -1,25 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
 import logger from "./logger";
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-if (!apiKey) {
-  logger.error("VITE_GEMINI_API_KEY is missing. Add it to your .env file (or your Vercel project's env vars).");
-}
-
-// Unlike the old Groq client, @google/genai throws synchronously in the
-// constructor when no API key is present in a browser context — letting
-// that escape at module load would take down the whole React app before it
-// even renders. Swallow it here; generateCompletion below surfaces a clear
-// error instead the moment it's actually called.
-let geminiClient;
-try {
-  geminiClient = new GoogleGenAI({ apiKey });
-} catch (err) {
-  logger.error("Failed to initialize Gemini client:", err);
-  geminiClient = null;
-}
-export { geminiClient };
 
 // Two separate models, each with its own free-tier quota. Mirrors the old
 // Groq split: the big model handles the full plan (needs real quality),
@@ -81,11 +60,11 @@ export class RateLimitError extends Error {
  * and auth failures (401/403) never do, since retrying those either wastes
  * quota or can never succeed.
  */
-function isRetryableError(err) {
-  const status = err?.status;
+function isRetryableError(status) {
   if (status === 429 || status === 401 || status === 403) return false;
   if (typeof status === "number" && status >= 500) return true;
-  // Network-level failures typically arrive without a status at all.
+  // Network-level failures (fetch threw, no response at all) arrive here
+  // with status undefined.
   if (!status) return true;
   return false;
 }
@@ -95,10 +74,18 @@ function sleep(ms) {
 }
 
 /**
- * Calls the Gemini API and returns the raw text content. Automatically
- * retries transient failures (network errors, 5xx) with exponential backoff
- * — up to 2 retries (3 attempts total). Rate limits and auth errors are
- * never retried; they surface immediately.
+ * Calls Gemini via our own /api/gemini serverless proxy and returns the raw
+ * text content. The proxy exists because generativelanguage.googleapis.com
+ * doesn't send CORS headers for browser-origin requests — calling it
+ * directly from the client fails with "Failed to fetch" regardless of
+ * whether the API key or model name is valid. The proxy holds the API key
+ * server-side and forwards the request, which also keeps the key out of
+ * the client bundle entirely (an improvement over the old Groq setup,
+ * which called the API directly from the browser with the key exposed).
+ *
+ * Automatically retries transient failures (network errors, 5xx) with
+ * exponential backoff — up to 2 retries (3 attempts total). Rate limits and
+ * auth errors are never retried; they surface immediately.
  * @param {Object} params
  * @param {string} params.system - system instruction
  * @param {string} params.prompt - user prompt
@@ -115,37 +102,37 @@ export async function generateCompletion({
   json = false,
   model = MODEL_LARGE,
 }) {
-  if (!geminiClient) {
-    throw new Error("Invalid Gemini API key. Check your .env file.");
-  }
-
   const maxRetries = 2;
   let lastErr;
+  let lastStatus;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      logger.debug("Calling Gemini", { model, json, attempt: attempt + 1 });
+      logger.debug("Calling Gemini proxy", { model, json, attempt: attempt + 1 });
 
-      const response = await geminiClient.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          systemInstruction: system,
-          temperature,
-          maxOutputTokens: maxTokens,
-          ...(json ? { responseMimeType: "application/json" } : {}),
-        },
+      const res = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system, prompt, temperature, maxTokens, json, model }),
       });
 
-      const content = response.text;
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const err = new Error(data?.error || `Proxy request failed (${res.status})`);
+        err.status = res.status;
+        throw err;
+      }
+
+      const content = data?.text;
 
       if (!content) {
         throw new Error("Empty response from Gemini");
       }
 
-      if (response.usageMetadata) {
+      if (data.usageMetadata) {
         const { promptTokenCount, candidatesTokenCount, totalTokenCount } =
-          response.usageMetadata;
+          data.usageMetadata;
         logger.info(
           `Gemini usage [${model}] — prompt: ${promptTokenCount}, ` +
             `completion: ${candidatesTokenCount}, total: ${totalTokenCount}`
@@ -156,8 +143,9 @@ export async function generateCompletion({
       return content;
     } catch (err) {
       lastErr = err;
+      lastStatus = err?.status;
 
-      if (attempt < maxRetries && isRetryableError(err)) {
+      if (attempt < maxRetries && isRetryableError(lastStatus)) {
         const backoffMs = 500 * 2 ** attempt; // 500ms, then 1000ms
         logger.error(
           `Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${backoffMs}ms:`,
@@ -173,20 +161,17 @@ export async function generateCompletion({
 
   logger.error("Gemini API call failed:", lastErr);
 
-  const status = lastErr?.status;
-  const apiMessage = lastErr?.message || "";
-
-  if (status === 429) {
+  if (lastStatus === 429) {
     throw new RateLimitError(
       "Gemini's free-tier rate limit has been reached for this app. Please wait a bit and try again."
     );
   }
 
-  if (status === 401 || status === 403 || apiMessage.includes("API key")) {
-    throw new Error("Invalid Gemini API key. Check your .env file.");
+  if (lastStatus === 401 || lastStatus === 403 || lastStatus === 500) {
+    throw new Error("The AI service isn't configured correctly. Check the server's Gemini API key.");
   }
 
   throw new Error("Failed to generate response from AI. Please try again.");
 }
 
-export default { geminiClient, generateCompletion, RateLimitError, MODEL_LARGE, MODEL_SMALL, getTodayUsage };
+export default { generateCompletion, RateLimitError, MODEL_LARGE, MODEL_SMALL, getTodayUsage };
