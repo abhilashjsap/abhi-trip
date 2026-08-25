@@ -473,7 +473,11 @@ export async function generateTripPlan(formData) {
     system: SYSTEM_PROMPT,
     prompt,
     temperature: 0.7,
-    maxTokens: 6000,
+    // Groq's TPM limit for openai/gpt-oss-120b on this tier is 8000, and it
+    // counts prompt + maxTokens against that limit (not just actual usage).
+    // This prompt runs ~2100-2300 tokens, so 6000 pushed the request over
+    // 8000 and got rejected outright with a 413 before the model even ran.
+    maxTokens: 5400,
     json: true,
   });
 

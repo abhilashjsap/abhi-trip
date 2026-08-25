@@ -196,6 +196,17 @@ export async function generateCompletion({
   const status = lastErr?.status;
   const apiMessage = lastErr?.error?.error?.message || lastErr?.message || "";
 
+  // 413 here isn't "message too big to send" — Groq rejects the request
+  // before running it because (prompt tokens + maxTokens) exceeds the
+  // model's tokens-per-minute cap. Surface it as a rate limit, not a
+  // generic failure, so the UI doesn't tell the user to just "try again"
+  // when the same request would fail again immediately.
+  if (status === 413) {
+    throw new RateLimitError(
+      "This request is too large for Groq's per-minute token limit on this model right now. Please try again in a minute."
+    );
+  }
+
   if (status === 429 || apiMessage.toLowerCase().includes("rate limit")) {
     const retryAfterSeconds = parseRetryAfter(apiMessage);
     throw new RateLimitError(
