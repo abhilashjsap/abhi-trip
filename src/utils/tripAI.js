@@ -143,9 +143,10 @@ Rules:
     system: SYSTEM_PROMPT,
     prompt,
     temperature: 0.3,
-    maxTokens: 400,
+    maxTokens: 1500,
     json: true,
     model: MODEL_SMALL,
+    thinkingLevel: "MINIMAL",
   });
 
   let result;
@@ -241,9 +242,10 @@ Rules:
     system: SYSTEM_PROMPT,
     prompt,
     temperature: 0.3,
-    maxTokens: 400,
+    maxTokens: 1500,
     json: true,
     model: MODEL_SMALL,
+    thinkingLevel: "MINIMAL",
   });
 
   let result;
@@ -473,7 +475,12 @@ export async function generateTripPlan(formData) {
     system: SYSTEM_PROMPT,
     prompt,
     temperature: 0.7,
-    maxTokens: 6000,
+    // Gemini's "thinking" tokens draw from this same budget before the
+    // visible JSON is written (see generateCompletion's thinkingLevel doc),
+    // so this needs real headroom beyond just the ~3-3.5k tokens the JSON
+    // itself runs — both models support up to 65,536 output tokens, so
+    // there's plenty of room.
+    maxTokens: 10000,
     json: true,
   });
 

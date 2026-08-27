@@ -34,6 +34,7 @@ export default {
       maxTokens = 4096,
       json = false,
       model,
+      thinkingLevel = "LOW",
     } = body || {};
 
     if (!prompt || !model) {
@@ -53,6 +54,13 @@ export default {
           systemInstruction: system,
           temperature,
           maxOutputTokens: maxTokens,
+          // Gemini 3.5 models think by default (medium level), and those
+          // thinking tokens are drawn from the same maxOutputTokens budget
+          // as the visible response — with thinking left uncapped, it can
+          // eat most of the budget and leave the actual JSON truncated
+          // mid-string. thinkingLevel (not the older thinkingBudget, which
+          // 3.5 models reject) keeps that overhead small.
+          thinkingConfig: { thinkingLevel },
           ...(json ? { responseMimeType: "application/json" } : {}),
         },
       });

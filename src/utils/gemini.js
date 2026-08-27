@@ -96,6 +96,10 @@ function sleep(ms) {
  * @param {number} [params.maxTokens=4096]
  * @param {boolean} [params.json=false] - request JSON output
  * @param {string} [params.model=MODEL_LARGE] - which Gemini model to use
+ * @param {string} [params.thinkingLevel="LOW"] - MINIMAL/LOW/MEDIUM/HIGH.
+ *   Thinking tokens draw from the same maxTokens budget as the visible
+ *   response, so keeping this low leaves more room for the actual output
+ *   instead of it getting truncated mid-generation.
  */
 export async function generateCompletion({
   system,
@@ -104,6 +108,7 @@ export async function generateCompletion({
   maxTokens = 4096,
   json = false,
   model = MODEL_LARGE,
+  thinkingLevel = "LOW",
 }) {
   // Gemini's 503 "model overloaded" errors are explicitly billed as usually
   // temporary, so this gets a bit more patience than a plain network blip:
@@ -120,7 +125,7 @@ export async function generateCompletion({
       const res = await fetch("/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system, prompt, temperature, maxTokens, json, model }),
+        body: JSON.stringify({ system, prompt, temperature, maxTokens, json, model, thinkingLevel }),
       });
 
       const data = await res.json().catch(() => null);
