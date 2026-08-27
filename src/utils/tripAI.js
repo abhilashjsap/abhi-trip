@@ -439,6 +439,7 @@ Rules:
 - currencyInfo.isForeign should be false only if ${destination}'s local currency IS ${currency} (e.g. destination and currency are the same country/region). If false, you may omit the other currencyInfo fields or set them to null.
 - oneUnitOfInputCurrencyInLocal must be a plain number: how many units of the local currency you get for 1 unit of ${currency} (e.g. if 1 INR = 18 MYR-equivalent-in-cents... just give the direct numeric rate, however small or large).
 - If isForeign is true, give a genuinely useful, destination-specific exchange recommendation — not generic advice. Be honest if card usage is fine and cash isn't really needed.
+- Every text field must contain real, specific content about ${destination} — never placeholder or filler text (e.g. never write literal text like "reason text" or "description here"). If a field genuinely doesn't apply, use null instead of a placeholder.
 - Keep JSON valid — no trailing commas, no comments.
 `.trim();
 }
@@ -482,6 +483,14 @@ export async function generateTripPlan(formData) {
     // there's plenty of room.
     maxTokens: 10000,
     json: true,
+    // This prompt asks for a LOT in one shot (12 months of weather, a full
+    // itinerary, attractions, food, shopping, currency info, ...). "LOW"
+    // (the default) was tuned purely to avoid truncation and was too
+    // shallow for a schema this large — it was producing lazy placeholder
+    // text ("reason text", "warning text") on some of the less prominent
+    // fields instead of real destination-specific content. We have plenty
+    // of maxTokens headroom now, so give it real reasoning depth.
+    thinkingLevel: "MEDIUM",
   });
 
   let parsed;
