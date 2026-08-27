@@ -433,6 +433,14 @@ button:disabled {
   scroll-snap-type: x proximity;
 }
 
+/* PDF export captures the DOM as laid out — a horizontal-scroll strip only
+   shows whatever fits in the unscrolled width, so cards further along would
+   be missing entirely from the export. Wrap into a full grid instead. */
+.pdf-exporting .attractions-scroll {
+  overflow: visible;
+  flex-wrap: wrap;
+}
+
 .attractions-scroll::-webkit-scrollbar {
   height: 6px;
 }
