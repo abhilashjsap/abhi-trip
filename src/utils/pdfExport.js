@@ -24,6 +24,55 @@ function waitForImages(element, timeoutMs = 8000) {
   );
 }
 
+// Cards/blocks that should never be sliced across a page boundary. The
+// export is one giant screenshot cut into page-height chunks, so without
+// this the cut falls wherever the fixed page height happens to land —
+// straight through a card, a day's itinerary, etc.
+const NO_SPLIT_SELECTOR = [
+  ".hero",
+  ".trip-stub",
+  ".attraction-card",
+  ".weather-month",
+  ".timeline-day",
+  ".flights-card",
+  ".currency-card",
+  ".dish-card",
+  ".shopping-item",
+  ".packing-category",
+  ".budget-bar-row",
+].join(", ");
+
+/**
+ * Returns the top/bottom of every no-split block, in CSS px relative to the
+ * captured element's top edge. Measured from the live DOM before rasterizing
+ * (not the canvas), then later converted into the PDF's coordinate space.
+ */
+function getNoSplitRanges(element) {
+  const elementTop = element.getBoundingClientRect().top;
+  const ranges = Array.from(element.querySelectorAll(NO_SPLIT_SELECTOR)).map((node) => {
+    const rect = node.getBoundingClientRect();
+    return [rect.top - elementTop, rect.bottom - elementTop];
+  });
+  ranges.sort((a, b) => a[0] - b[0]);
+  return ranges;
+}
+
+/**
+ * Nudges an ideal page-break position to avoid landing inside a no-split
+ * range. Prefers ending the page early (right before the block) unless that
+ * would leave the page mostly empty, in which case it extends the page to
+ * swallow the whole block instead.
+ */
+function findSafeBreak(idealY, ranges, pageHeight, prevBreakY) {
+  for (const [top, bottom] of ranges) {
+    if (idealY > top && idealY < bottom) {
+      const contentIfSnappedBack = top - prevBreakY;
+      return contentIfSnappedBack >= pageHeight * 0.3 ? top : bottom;
+    }
+  }
+  return idealY;
+}
+
 /**
  * Captures a DOM element and saves it as a multi-page PDF.
  * @param {HTMLElement} element - the element to capture (e.g. the trip result container)
@@ -42,6 +91,9 @@ export async function exportElementToPdf(element, filename = "trip") {
 
   try {
     await waitForImages(element);
+
+    const elementWidth = element.getBoundingClientRect().width;
+    const noSplitRanges = getNoSplitRanges(element);
 
     const canvas = await html2canvas(element, {
       scale: 2,
@@ -67,22 +119,32 @@ export async function exportElementToPdf(element, filename = "trip") {
     });
 
     // Paginate: split the tall canvas into page-height chunks so content
-    // isn't squeezed or cut off awkwardly across pages.
+    // isn't squeezed or cut off awkwardly across pages. Break points are
+    // nudged (via noSplitRanges) to land in the gap between cards rather
+    // than at a fixed pixel offset that might fall right through one.
     const pageHeight = pdf.internal.pageSize.getHeight();
     const pageWidth = pdf.internal.pageSize.getWidth();
     const imgHeight = (canvas.height * pageWidth) / canvas.width;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    // Convert the no-split ranges (measured in DOM CSS px) into the same
+    // unit space as pageHeight/imgHeight above — no need to know
+    // html2canvas's internal scale factor, since both the image and the
+    // element share one width ratio.
+    const pdfUnitsPerCssPixel = pageWidth / elementWidth;
+    const noSplitRangesPdf = noSplitRanges.map(([top, bottom]) => [
+      top * pdfUnitsPerCssPixel,
+      bottom * pdfUnitsPerCssPixel,
+    ]);
 
-    pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight);
-    heightLeft -= pageHeight;
+    pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, imgHeight);
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
+    let breakY = findSafeBreak(pageHeight, noSplitRangesPdf, pageHeight, 0);
+
+    while (breakY < imgHeight) {
       pdf.addPage();
-      pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "JPEG", 0, -breakY, pageWidth, imgHeight);
+      const idealNext = breakY + pageHeight;
+      breakY = findSafeBreak(idealNext, noSplitRangesPdf, pageHeight, breakY);
     }
 
     pdf.save(`${filename}.pdf`);
