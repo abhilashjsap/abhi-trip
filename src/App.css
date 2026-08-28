@@ -234,6 +234,23 @@ button:disabled {
   color: var(--navy);
 }
 
+.loading-stream-preview {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  height: 90px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--navy);
+  color: rgba(247, 244, 238, 0.55);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  text-align: left;
+  word-break: break-all;
+  display: flex;
+  align-items: flex-end;
+}
+
 /* ---------- Result: Hero ---------- */
 
 .trip-result {

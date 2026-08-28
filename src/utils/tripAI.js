@@ -465,9 +465,13 @@ Rules:
  * caller should catch this specifically to show a warning instead of a plan.
  *
  * @param {Object} formData
+ * @param {(text: string) => void} [onProgress] - called with the raw
+ *   accumulated JSON text so far as it streams in, for a live progress
+ *   preview. Only wired to the main plan call — the two feasibility/
+ *   estimate calls are short enough that a spinner is fine.
  * @returns {Promise<Object>} parsed trip plan with an id
  */
-export async function generateTripPlan(formData) {
+export async function generateTripPlan(formData, onProgress) {
   // If the amount came from a picked category (not hand-typed), skip the
   // feasibility check entirely — the category itself already defines what's
   // realistic, and re-checking it against itself is redundant (and risks
@@ -498,6 +502,7 @@ export async function generateTripPlan(formData) {
     maxTokens: 10000,
     json: true,
     schema: TRIP_PLAN_SCHEMA,
+    onChunk: onProgress,
     // This prompt asks for a LOT in one shot (12 months of weather, a full
     // itinerary, attractions, food, shopping, currency info, ...). "LOW"
     // (the default) was tuned purely to avoid truncation and was too

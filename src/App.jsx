@@ -34,6 +34,7 @@ export default function App() {
   const [lastInput, setLastInput] = useState(null);
   const [view, setView] = useState("form"); // "form" | "history"
   const [historyKey, setHistoryKey] = useState(0);
+  const [streamPreview, setStreamPreview] = useState("");
 
   useEffect(() => {
     setUnlocked(isUnlocked());
@@ -54,8 +55,9 @@ export default function App() {
     setError("");
     setFeasibility(null);
     setLastInput(formData);
+    setStreamPreview("");
     try {
-      const result = await generateTripPlan(formData);
+      const result = await generateTripPlan(formData, setStreamPreview);
       setTrip(result);
       cacheCurrentTrip(result);
       addTripToHistory(result);
@@ -125,6 +127,15 @@ export default function App() {
         <div className="loading-state">
           <div className="loading-mark" />
           <p>Mapping out your trip...</p>
+          {streamPreview && (
+            <div className="loading-stream-preview" aria-hidden="true">
+              {/* Raw JSON as it streams in — not meant to be read, just a
+                  live signal that something is actually happening instead
+                  of a static spinner for 10-20 seconds. Tail end only, so
+                  it doesn't keep growing the box. */}
+              {streamPreview.slice(-600)}
+            </div>
+          )}
         </div>
       </div>
     );
