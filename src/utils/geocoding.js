@@ -62,3 +62,51 @@ export async function searchPlaces(query) {
     return [];
   }
 }
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Looks up a single attraction's coordinates via Nominatim free-text search.
+ * Returns null (never throws) on no match or any failure — a missing pin
+ * shouldn't break the map for the rest of the trip.
+ */
+async function geocodeAttraction(name, destination) {
+  const query = `${name}, ${destination}`;
+  try {
+    const res = await fetch(
+      `${BASE_URL}?q=${encodeURIComponent(query)}&format=jsonv2&limit=1`,
+      { headers: { "Accept-Language": "en" } }
+    );
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const hit = data[0];
+    if (!hit) return null;
+
+    const lat = Number(hit.lat);
+    const lng = Number(hit.lon);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  } catch (err) {
+    logger.debug(`Geocoding failed for "${query}":`, err);
+    return null;
+  }
+}
+
+/**
+ * Geocodes a list of attractions one at a time (not in parallel) — unlike
+ * Unsplash, Nominatim's usage policy caps free public use at ~1 request per
+ * second, so a batch of 5-8 attractions takes a few seconds. Meant to run
+ * client-side after the trip is already showing, not blocking generation.
+ * @returns {Promise<Array<{lat: number, lng: number} | null>>} same order/length as input
+ */
+export async function geocodeAttractions(attractions, destination) {
+  const results = [];
+  for (const attraction of attractions) {
+    results.push(await geocodeAttraction(attraction.name, destination));
+    // Stay comfortably under Nominatim's ~1 req/sec policy.
+    await sleep(1100);
+  }
+  return results;
+}

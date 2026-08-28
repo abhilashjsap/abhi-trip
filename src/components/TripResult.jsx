@@ -8,6 +8,7 @@ import FoodAndDrink from "./FoodAndDrink";
 import Shopping from "./Shopping";
 import CurrencyInfo from "./CurrencyInfo";
 import Weather from "./Weather";
+import AttractionsMap from "./AttractionsMap";
 import TripStub from "./TripStub";
 import { exportElementToPdf } from "../utils/pdfExport";
 import { regenerateSection, regenerateItineraryDay } from "../utils/tripAI";
@@ -114,6 +115,7 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
           onRegenerate={() => handleRegenerateSection("attractions")}
           regenerating={regeneratingKey === "attractions"}
         />
+        <AttractionsMap attractions={attractions} destination={input?.destination} />
         <Weather
           weather={weather}
           onRegenerate={() => handleRegenerateSection("weather")}
