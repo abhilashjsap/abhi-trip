@@ -74,6 +74,22 @@ export class RepetitionLoopError extends Error {
 }
 
 /**
+ * Thrown when Gemini's streamed candidate reports a finishReason other than
+ * STOP (MAX_TOKENS, SAFETY, RECITATION, LANGUAGE, OTHER, ...) — it stops
+ * emitting chunks without ever throwing, so the caller would otherwise
+ * receive a plausible-looking but truncated fragment with no indication
+ * anything went wrong. Has no `.status`, so — like RepetitionLoopError — it
+ * rides generateCompletion's existing retry-as-transient path.
+ */
+export class IncompleteResponseError extends Error {
+  constructor(message, finishReason) {
+    super(message);
+    this.name = "IncompleteResponseError";
+    this.finishReason = finishReason;
+  }
+}
+
+/**
  * Cheap check for a unit repeating back-to-back at the very end of the text
  * so far (must contain a letter, to avoid flagging legitimate repeated JSON
  * punctuation/numbers). Only looks at the tail — cost stays constant
@@ -259,6 +275,7 @@ export async function generateCompletion({
         const decoder = new TextDecoder();
         const feedRunawayStringGuard = createRunawayStringGuard();
         let full = "";
+        let finishReason = null;
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -279,7 +296,9 @@ export async function generateCompletion({
               onChunk(full);
             }
             try {
-              usageMetadata = JSON.parse(piece.slice(sentinelIdx + 1)).usageMetadata;
+              const tail = JSON.parse(piece.slice(sentinelIdx + 1));
+              usageMetadata = tail.usageMetadata;
+              finishReason = tail.finishReason;
             } catch {
               // Best-effort only — losing the usage figure for this call
               // doesn't affect the actual generated content.
@@ -299,6 +318,20 @@ export async function generateCompletion({
               "The AI got stuck repeating itself instead of finishing the response."
             );
           }
+        }
+
+        // Gemini can end the chunk sequence early — hitting maxOutputTokens,
+        // a safety filter, recitation, etc. — without ever throwing, leaving
+        // `full` a plausible-looking but truncated fragment (observed live:
+        // a clean, non-repeating 836-char fragment that simply stopped mid-
+        // sentence). finishReason distinguishes that from an actual clean
+        // finish; treat anything else as a failure so it isn't handed to the
+        // caller as if it were complete JSON.
+        if (finishReason && finishReason !== "STOP") {
+          throw new IncompleteResponseError(
+            `The AI stopped before finishing (${finishReason}).`,
+            finishReason
+          );
         }
 
         content = full;
@@ -334,12 +367,14 @@ export async function generateCompletion({
       lastStatus = err?.status;
 
       const isRepetitionLoop = err instanceof RepetitionLoopError;
+      const isIncomplete = err instanceof IncompleteResponseError;
 
-      if (attempt < maxRetries && (isRepetitionLoop || isRetryableError(lastStatus))) {
-        // A repetition loop isn't a network/server issue — a fresh sampling
-        // attempt is very unlikely to hit the same loop, so there's no
-        // reason to wait before retrying.
-        const backoffMs = isRepetitionLoop ? 0 : 700 * 2 ** attempt; // 700ms, 1400ms, 2800ms
+      if (attempt < maxRetries && (isRepetitionLoop || isIncomplete || isRetryableError(lastStatus))) {
+        // Neither a repetition loop nor an early non-STOP finish is a
+        // network/server issue — a fresh sampling attempt is very unlikely
+        // to hit the same problem, so there's no reason to wait before
+        // retrying.
+        const backoffMs = isRepetitionLoop || isIncomplete ? 0 : 700 * 2 ** attempt; // 700ms, 1400ms, 2800ms
         logger.error(
           `Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${backoffMs}ms:`,
           err
@@ -357,6 +392,12 @@ export async function generateCompletion({
   if (lastErr instanceof RepetitionLoopError) {
     throw new Error(
       "The AI kept getting stuck repeating itself and couldn't finish. Please try again."
+    );
+  }
+
+  if (lastErr instanceof IncompleteResponseError) {
+    throw new Error(
+      `The AI kept stopping before finishing its response (${lastErr.finishReason}). Please try again.`
     );
   }
 
