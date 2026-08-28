@@ -8,37 +8,46 @@ export const MODEL_SMALL = "gemini-3.5-flash-lite";
 
 const USAGE_STORAGE_KEY = "abhitrip_usage_log";
 
-/**
- * Reads today's recorded token usage per model from localStorage. Usage
- * entries are date-stamped so a new day always starts fresh — this mirrors
- * the free tier's own daily reset, giving the UI an honest (if approximate)
- * picture of remaining daily quota without calling a billing API.
- */
-export function getTodayUsage() {
+// The free tier's actual binding constraint is a hard REQUEST COUNT per day
+// (confirmed live via a real 429: quotaId
+// GenerateRequestsPerDayPerProjectPerModel-FreeTier, quotaValue "20" for
+// gemini-3.5-flash) — not a token budget, which is why this only tracks
+// request counts now rather than cumulative tokens. Every attempt that
+// reaches the network counts, including retries, since a retry after a
+// repetition-loop or incomplete-response guard is a genuine completed
+// Gemini call, not a free do-over.
+function readTodayUsageRaw() {
   const today = new Date().toISOString().slice(0, 10);
   try {
     const raw = localStorage.getItem(USAGE_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
-    if (parsed?.date === today) return parsed.usage;
+    if (parsed?.date === today) return parsed;
   } catch {
     // Corrupted or inaccessible storage — fall through to a fresh start.
   }
-  return { [MODEL_LARGE]: 0, [MODEL_SMALL]: 0 };
+  return { date: today, requests: {} };
 }
 
-function recordUsage(model, totalTokens) {
-  if (!totalTokens) return;
-  const today = new Date().toISOString().slice(0, 10);
-  const usage = getTodayUsage();
-  usage[model] = (usage[model] || 0) + totalTokens;
+function writeTodayUsageRaw(data) {
   try {
-    localStorage.setItem(
-      USAGE_STORAGE_KEY,
-      JSON.stringify({ date: today, usage })
-    );
+    localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(data));
   } catch {
     // Storage full or unavailable — usage tracking is best-effort only.
   }
+}
+
+/** Reads today's recorded REQUEST COUNT per model — the real quota ceiling. */
+export function getTodayRequestCounts() {
+  const { requests } = readTodayUsageRaw();
+  return { [MODEL_LARGE]: requests[MODEL_LARGE] || 0, [MODEL_SMALL]: requests[MODEL_SMALL] || 0 };
+}
+
+/** Call once per actual network attempt to Gemini (including retries) —
+ * that's what the daily quota actually meters, regardless of outcome. */
+function recordRequest(model) {
+  const data = readTodayUsageRaw();
+  data.requests[model] = (data.requests[model] || 0) + 1;
+  writeTodayUsageRaw(data);
 }
 
 /**
@@ -251,6 +260,10 @@ export async function generateCompletion({
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       logger.debug("Calling Gemini proxy", { model, json, stream: !!onChunk, attempt: attempt + 1 });
+      // Counts against the daily quota the moment the request goes out,
+      // regardless of how it resolves — a 429/503/guard-rejected attempt
+      // still consumed one of the day's 20 allowed calls to this model.
+      recordRequest(model);
 
       const res = await fetch("/api/gemini", {
         method: "POST",
@@ -384,7 +397,6 @@ export async function generateCompletion({
           `Gemini usage [${model}] — prompt: ${promptTokenCount}, ` +
             `completion: ${candidatesTokenCount}, total: ${totalTokenCount}`
         );
-        recordUsage(model, totalTokenCount);
       }
 
       return content;

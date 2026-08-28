@@ -1,14 +1,17 @@
 import { MODEL_LARGE, MODEL_SMALL } from "./gemini";
 import logger from "./logger";
 
-// Google no longer publishes fixed per-model free-tier numbers on
-// ai.google.dev — check https://aistudio.google.com/rate-limit for this
-// account's actual live limits. These are rough placeholders (roughly
-// requests/day x tokens/call) just to keep the "trips left today" meter
-// in the right ballpark rather than exact.
-export const DAILY_TOKEN_BUDGET = {
-  [MODEL_LARGE]: 2000000,
-  [MODEL_SMALL]: 1000000,
+// The free tier's real binding constraint is a hard REQUEST COUNT per day,
+// not a token budget (confirmed live via an actual 429: quotaId
+// GenerateRequestsPerDayPerProjectPerModel-FreeTier, quotaValue "20" for
+// gemini-3.5-flash — Google cut free-tier Flash quotas heavily in Dec 2025
+// and no longer publishes fixed numbers on ai.google.dev; check
+// https://aistudio.google.com/rate-limit for this account's live figures).
+// MODEL_SMALL's real number isn't independently confirmed, so it uses the
+// same conservative figure rather than assuming it's more generous.
+export const DAILY_REQUEST_LIMIT = {
+  [MODEL_LARGE]: 20,
+  [MODEL_SMALL]: 20,
 };
 
 const CURRENT_TRIP_KEY = "abhi-trip-current";

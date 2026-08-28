@@ -1,22 +1,25 @@
-import { getTodayUsage, MODEL_LARGE } from "../utils/gemini";
-import { DAILY_TOKEN_BUDGET } from "../utils/tripStorage";
+import { getTodayRequestCounts, MODEL_LARGE } from "../utils/gemini";
+import { DAILY_REQUEST_LIMIT } from "../utils/tripStorage";
 
-// Rough tokens-per-full-trip-generation estimate (the one call that matters
-// for the daily ceiling — the two small calls run on a separate, much
-// higher-capacity pool and aren't the binding constraint).
-const APPROX_TOKENS_PER_TRIP = 8500;
+// A single "Generate" click can cost more than one request against the
+// daily quota — every retry (including the repetition-loop/incomplete-
+// response guards' immediate retries) is a real completed Gemini call, not
+// a free do-over. This estimate assumes a normal trip costs ~1.5 requests
+// on average (mostly 1, occasionally 2-3 on a rough generation) rather than
+// promising a full request-per-trip that a bad run can blow through fast.
+const APPROX_REQUESTS_PER_TRIP = 1.5;
 
 export default function UsageDashboard() {
-  const usage = getTodayUsage();
-  const usedLarge = usage[MODEL_LARGE] || 0;
-  const budgetLarge = DAILY_TOKEN_BUDGET[MODEL_LARGE];
-  const remainingTokens = Math.max(budgetLarge - usedLarge, 0);
+  const requestCounts = getTodayRequestCounts();
+  const usedLarge = requestCounts[MODEL_LARGE] || 0;
+  const limitLarge = DAILY_REQUEST_LIMIT[MODEL_LARGE];
+  const remainingRequests = Math.max(limitLarge - usedLarge, 0);
   const approxTripsLeft = Math.max(
-    Math.floor(remainingTokens / APPROX_TOKENS_PER_TRIP),
+    Math.floor(remainingRequests / APPROX_REQUESTS_PER_TRIP),
     0
   );
   const percentUsed = Math.min(
-    Math.round((usedLarge / budgetLarge) * 100),
+    Math.round((usedLarge / limitLarge) * 100),
     100
   );
 
@@ -29,7 +32,7 @@ export default function UsageDashboard() {
         "usage-dashboard" +
         (isOut ? " usage-out" : isLow ? " usage-low" : "")
       }
-      title={`${usedLarge.toLocaleString()} / ${budgetLarge.toLocaleString()} tokens used today (estimate)`}
+      title={`${usedLarge} / ${limitLarge} requests used today (estimate — retries count too)`}
     >
       <span className="usage-dot" aria-hidden="true" />
       <span className="usage-text">
