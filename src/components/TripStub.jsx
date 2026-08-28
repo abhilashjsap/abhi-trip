@@ -37,11 +37,13 @@ export default function TripStub({ input, onReset }) {
         </div>
       </div>
 
-      <div className="stub-tear">
-        <button onClick={onReset} className="stub-reset">
-          Plan another
-        </button>
-      </div>
+      {onReset && (
+        <div className="stub-tear">
+          <button onClick={onReset} className="stub-reset">
+            Plan another
+          </button>
+        </div>
+      )}
     </div>
   );
 }

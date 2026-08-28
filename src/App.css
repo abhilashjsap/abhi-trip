@@ -879,6 +879,7 @@ button:disabled {
 .pdf-export-row {
   display: flex;
   justify-content: flex-end;
+  gap: 0.75rem;
   margin-top: 1.5rem;
 }
 
@@ -896,6 +897,40 @@ button:disabled {
 .save-pdf-btn:hover:not(:disabled) {
   border-color: var(--rust);
   background: var(--paper);
+}
+
+.share-btn {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.share-btn:hover:not(:disabled) {
+  border-color: var(--rust);
+  background: var(--rust);
+}
+
+.share-result {
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-top: 0.5rem;
+}
+
+.share-url {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--navy);
+  word-break: break-all;
+}
+
+.shared-trip-banner {
+  background: var(--sand);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
 }
 
 /* ---------- Flights ---------- */

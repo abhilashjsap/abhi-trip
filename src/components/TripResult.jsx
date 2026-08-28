@@ -12,15 +12,31 @@ import AttractionsMap from "./AttractionsMap";
 import TripStub from "./TripStub";
 import { exportTripToPdf } from "../utils/pdfExport";
 import { regenerateSection, regenerateItineraryDay } from "../utils/tripAI";
+import { shareTrip } from "../utils/tripShare";
 import logger from "../utils/logger";
 
-export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateTrip }) {
+/**
+ * @param {boolean} [readOnly=false] - true when viewing someone else's
+ *   shared trip (via ?shared=<id>): hides "Plan another", inline itinerary
+ *   editing, every regenerate button, and the Share button itself. Export
+ *   to PDF stays available — a recipient might reasonably want a copy.
+ */
+export default function TripResult({
+  trip,
+  onReset,
+  onUpdateItinerary,
+  onUpdateTrip,
+  readOnly = false,
+}) {
   const [exporting, setExporting] = useState(false);
   // Holds the section key (e.g. "attractions") or "day-3" while a
   // regeneration request is in flight, so only that one section shows a
   // loading state instead of the whole page.
   const [regeneratingKey, setRegeneratingKey] = useState(null);
   const [regenerateError, setRegenerateError] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [shareError, setShareError] = useState("");
 
   if (!trip) return null;
 
@@ -69,6 +85,29 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
     }
   };
 
+  const handleShare = async () => {
+    setSharing(true);
+    setShareError("");
+    setShareUrl("");
+    try {
+      const id = await shareTrip(trip);
+      const url = `${window.location.origin}/?shared=${id}`;
+      setShareUrl(url);
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        // Clipboard access can be denied (permissions, non-HTTPS context)
+        // — the link is still shown on-screen either way, just not
+        // auto-copied.
+      }
+    } catch (err) {
+      logger.error("Failed to create share link:", err);
+      setShareError(err.message || "Couldn't create a share link. Please try again.");
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <div className="trip-result">
       <div className="hero" style={
@@ -93,7 +132,13 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
       </div>
 
       <div className="trip-body">
-        <TripStub input={input} onReset={onReset} />
+        {readOnly && (
+          <p className="shared-trip-banner">
+            You're viewing a shared trip plan.
+          </p>
+        )}
+
+        <TripStub input={input} onReset={readOnly ? undefined : onReset} />
 
         <div className="pdf-export-row">
           <button
@@ -103,7 +148,23 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
           >
             {exporting ? "Preparing PDF..." : "Save as PDF"}
           </button>
+          {!readOnly && (
+            <button
+              className="save-pdf-btn share-btn"
+              onClick={handleShare}
+              disabled={sharing}
+            >
+              {sharing ? "Creating link..." : "Share"}
+            </button>
+          )}
         </div>
+
+        {shareUrl && (
+          <p className="share-result">
+            Link copied: <span className="share-url">{shareUrl}</span>
+          </p>
+        )}
+        {shareError && <p className="form-error">{shareError}</p>}
 
         {regenerateError && (
           <p className="form-error regenerate-error">{regenerateError}</p>
@@ -111,19 +172,19 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
 
         <Attractions
           attractions={attractions}
-          onRegenerate={() => handleRegenerateSection("attractions")}
+          onRegenerate={readOnly ? undefined : () => handleRegenerateSection("attractions")}
           regenerating={regeneratingKey === "attractions"}
         />
         <AttractionsMap attractions={attractions} destination={input?.destination} />
         <Weather
           weather={weather}
-          onRegenerate={() => handleRegenerateSection("weather")}
+          onRegenerate={readOnly ? undefined : () => handleRegenerateSection("weather")}
           regenerating={regeneratingKey === "weather"}
         />
         <Itinerary
           itinerary={itinerary}
-          onUpdateItinerary={onUpdateItinerary}
-          onRegenerateDay={handleRegenerateDay}
+          onUpdateItinerary={readOnly ? undefined : onUpdateItinerary}
+          onRegenerateDay={readOnly ? undefined : handleRegenerateDay}
           regeneratingDay={
             regeneratingKey?.startsWith("day-")
               ? Number(regeneratingKey.slice(4))
@@ -135,17 +196,17 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
         <FoodAndDrink
           food={food}
           currency={input?.currency}
-          onRegenerate={() => handleRegenerateSection("food")}
+          onRegenerate={readOnly ? undefined : () => handleRegenerateSection("food")}
           regenerating={regeneratingKey === "food"}
         />
         <Shopping
           shopping={shopping}
-          onRegenerate={() => handleRegenerateSection("shopping")}
+          onRegenerate={readOnly ? undefined : () => handleRegenerateSection("shopping")}
           regenerating={regeneratingKey === "shopping"}
         />
         <PackingList
           packingList={packingList}
-          onRegenerate={() => handleRegenerateSection("packingList")}
+          onRegenerate={readOnly ? undefined : () => handleRegenerateSection("packingList")}
           regenerating={regeneratingKey === "packingList"}
         />
         <TripPlanner planner={planner} currency={input?.currency} />

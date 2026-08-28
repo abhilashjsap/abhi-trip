@@ -7,6 +7,7 @@ import UsageDashboard from "./components/UsageDashboard";
 import PasswordGate, { isUnlocked } from "./components/PasswordGate";
 import { generateTripPlan, BudgetTooLowError } from "./utils/tripAI";
 import { RateLimitError } from "./utils/gemini";
+import { loadSharedTrip } from "./utils/tripShare";
 import {
   cacheCurrentTrip,
   loadCachedTrip,
@@ -25,6 +26,13 @@ function formatWaitTime(seconds) {
   return `${seconds}s`;
 }
 
+// A shared trip link (?shared=<id>) is meant to work for whoever the
+// sender sends it to — read once, on the very first render, so it's
+// immune to the password gate and any of the normal app state below.
+function getSharedIdFromUrl() {
+  return new URLSearchParams(window.location.search).get("shared");
+}
+
 export default function App() {
   const [unlocked, setUnlocked] = useState(false);
   const [trip, setTrip] = useState(null);
@@ -35,6 +43,22 @@ export default function App() {
   const [view, setView] = useState("form"); // "form" | "history"
   const [historyKey, setHistoryKey] = useState(0);
   const [streamPreview, setStreamPreview] = useState("");
+
+  const [sharedId] = useState(getSharedIdFromUrl);
+  const [sharedTrip, setSharedTrip] = useState(null);
+  const [sharedLoading, setSharedLoading] = useState(!!sharedId);
+  const [sharedError, setSharedError] = useState("");
+
+  useEffect(() => {
+    if (!sharedId) return;
+    loadSharedTrip(sharedId)
+      .then(setSharedTrip)
+      .catch((err) => {
+        logger.error("Failed to load shared trip:", err);
+        setSharedError(err.message || "Couldn't load this shared trip.");
+      })
+      .finally(() => setSharedLoading(false));
+  }, [sharedId]);
 
   useEffect(() => {
     setUnlocked(isUnlocked());
@@ -116,6 +140,42 @@ export default function App() {
     cacheCurrentTrip(selectedTrip);
     setView("form");
   };
+
+  // Shared trips bypass the password gate entirely — that's the point of
+  // sharing a link with someone who doesn't have (and shouldn't need) the
+  // app password.
+  if (sharedId) {
+    if (sharedLoading) {
+      return (
+        <div className="app-container">
+          <div className="loading-state">
+            <div className="loading-mark" />
+            <p>Loading shared trip...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (sharedError) {
+      return (
+        <div className="app-container">
+          <div className="landing">
+            <div className="landing-header">
+              <span className="brand-mark">AbhiTrip</span>
+              <h1>Couldn't load this trip.</h1>
+              <p>{sharedError}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="app-container">
+        <TripResult trip={sharedTrip} readOnly />
+      </div>
+    );
+  }
 
   if (!unlocked) {
     return <PasswordGate onUnlock={() => setUnlocked(true)} />;
