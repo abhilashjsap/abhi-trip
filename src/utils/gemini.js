@@ -321,15 +321,21 @@ export async function generateCompletion({
         }
 
         // Gemini can end the chunk sequence early — hitting maxOutputTokens,
-        // a safety filter, recitation, etc. — without ever throwing, leaving
-        // `full` a plausible-looking but truncated fragment (observed live:
-        // a clean, non-repeating 836-char fragment that simply stopped mid-
-        // sentence). finishReason distinguishes that from an actual clean
-        // finish; treat anything else as a failure so it isn't handed to the
-        // caller as if it were complete JSON.
-        if (finishReason && finishReason !== "STOP") {
+        // a safety filter, recitation, etc., or (observed live: a 22-char
+        // fragment, just `{"weather": {"months":`) the upstream connection
+        // itself getting cut before Gemini's own final chunk ever arrives —
+        // without ever throwing, leaving `full` a truncated fragment with no
+        // indication anything went wrong. A genuinely complete generation
+        // always ends with an explicit finishReason of STOP; treat anything
+        // else, including it never arriving at all, as incomplete. This can
+        // in principle false-positive if the trailing metadata blob itself
+        // gets split across two stream reads (making finishReason silently
+        // fail to parse even on an otherwise-complete generation), but that
+        // only costs one extra retry — far cheaper than handing truncated
+        // JSON to the caller as if it were done.
+        if (finishReason !== "STOP") {
           throw new IncompleteResponseError(
-            `The AI stopped before finishing (${finishReason}).`,
+            `The AI stopped before finishing (${finishReason || "no finish signal received"}).`,
             finishReason
           );
         }
@@ -397,7 +403,9 @@ export async function generateCompletion({
 
   if (lastErr instanceof IncompleteResponseError) {
     throw new Error(
-      `The AI kept stopping before finishing its response (${lastErr.finishReason}). Please try again.`
+      `The AI kept stopping before finishing its response (${
+        lastErr.finishReason || "no finish signal received"
+      }). Please try again.`
     );
   }
 
