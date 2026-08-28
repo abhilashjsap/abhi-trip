@@ -1,13 +1,20 @@
-export default function FoodAndDrink({ food, currency }) {
+import RegenerateButton from "./RegenerateButton";
+
+export default function FoodAndDrink({ food, currency, onRegenerate, regenerating }) {
   if (!food) return null;
 
   const { dishes = [], beverages = [], mealCostEstimate } = food;
 
   return (
     <section className="food-section">
-      <div className="section-heading">
-        <span className="section-eyebrow">Eat & drink</span>
-        <h2>Local food to try</h2>
+      <div className="section-heading section-heading-with-action">
+        <div>
+          <span className="section-eyebrow">Eat & drink</span>
+          <h2>Local food to try</h2>
+        </div>
+        {onRegenerate && (
+          <RegenerateButton onClick={onRegenerate} loading={regenerating} />
+        )}
       </div>
 
       {dishes.length > 0 && (

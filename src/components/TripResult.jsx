@@ -10,11 +10,17 @@ import CurrencyInfo from "./CurrencyInfo";
 import Weather from "./Weather";
 import TripStub from "./TripStub";
 import { exportElementToPdf } from "../utils/pdfExport";
+import { regenerateSection, regenerateItineraryDay } from "../utils/tripAI";
 import logger from "../utils/logger";
 
-export default function TripResult({ trip, onReset, onUpdateItinerary }) {
+export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateTrip }) {
   const captureRef = useRef(null);
   const [exporting, setExporting] = useState(false);
+  // Holds the section key (e.g. "attractions") or "day-3" while a
+  // regeneration request is in flight, so only that one section shows a
+  // loading state instead of the whole page.
+  const [regeneratingKey, setRegeneratingKey] = useState(null);
+  const [regenerateError, setRegenerateError] = useState("");
 
   if (!trip) return null;
 
@@ -29,6 +35,37 @@ export default function TripResult({ trip, onReset, onUpdateItinerary }) {
       logger.error("PDF export failed:", err);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleRegenerateSection = async (sectionKey) => {
+    setRegeneratingKey(sectionKey);
+    setRegenerateError("");
+    try {
+      const updated = await regenerateSection(sectionKey, trip, input);
+      onUpdateTrip({ ...trip, [sectionKey]: updated });
+    } catch (err) {
+      logger.error(`Failed to regenerate ${sectionKey}:`, err);
+      setRegenerateError(err.message || "Couldn't regenerate that section. Please try again.");
+    } finally {
+      setRegeneratingKey(null);
+    }
+  };
+
+  const handleRegenerateDay = async (dayNumber) => {
+    setRegeneratingKey(`day-${dayNumber}`);
+    setRegenerateError("");
+    try {
+      const newDay = await regenerateItineraryDay(dayNumber, trip, input);
+      const nextItinerary = (trip.itinerary || []).map((d) =>
+        d.day === dayNumber ? newDay : d
+      );
+      onUpdateTrip({ ...trip, itinerary: nextItinerary });
+    } catch (err) {
+      logger.error(`Failed to regenerate day ${dayNumber}:`, err);
+      setRegenerateError(err.message || "Couldn't regenerate that day. Please try again.");
+    } finally {
+      setRegeneratingKey(null);
     }
   };
 
@@ -68,14 +105,48 @@ export default function TripResult({ trip, onReset, onUpdateItinerary }) {
           </button>
         </div>
 
-        <Attractions attractions={attractions} />
-        <Weather weather={weather} />
-        <Itinerary itinerary={itinerary} onUpdateItinerary={onUpdateItinerary} />
+        {regenerateError && (
+          <p className="form-error regenerate-error">{regenerateError}</p>
+        )}
+
+        <Attractions
+          attractions={attractions}
+          onRegenerate={() => handleRegenerateSection("attractions")}
+          regenerating={regeneratingKey === "attractions"}
+        />
+        <Weather
+          weather={weather}
+          onRegenerate={() => handleRegenerateSection("weather")}
+          regenerating={regeneratingKey === "weather"}
+        />
+        <Itinerary
+          itinerary={itinerary}
+          onUpdateItinerary={onUpdateItinerary}
+          onRegenerateDay={handleRegenerateDay}
+          regeneratingDay={
+            regeneratingKey?.startsWith("day-")
+              ? Number(regeneratingKey.slice(4))
+              : null
+          }
+        />
         <Flights flights={flights} currency={input?.currency} />
         <CurrencyInfo currencyInfo={currencyInfo} currency={input?.currency} />
-        <FoodAndDrink food={food} currency={input?.currency} />
-        <Shopping shopping={shopping} />
-        <PackingList packingList={packingList} />
+        <FoodAndDrink
+          food={food}
+          currency={input?.currency}
+          onRegenerate={() => handleRegenerateSection("food")}
+          regenerating={regeneratingKey === "food"}
+        />
+        <Shopping
+          shopping={shopping}
+          onRegenerate={() => handleRegenerateSection("shopping")}
+          regenerating={regeneratingKey === "shopping"}
+        />
+        <PackingList
+          packingList={packingList}
+          onRegenerate={() => handleRegenerateSection("packingList")}
+          regenerating={regeneratingKey === "packingList"}
+        />
         <TripPlanner planner={planner} currency={input?.currency} />
       </div>
     </div>

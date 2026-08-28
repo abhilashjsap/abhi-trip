@@ -1,6 +1,12 @@
 import { useState } from "react";
+import RegenerateButton from "./RegenerateButton";
 
-export default function Itinerary({ itinerary, onUpdateItinerary }) {
+export default function Itinerary({
+  itinerary,
+  onUpdateItinerary,
+  onRegenerateDay,
+  regeneratingDay,
+}) {
   const [editing, setEditing] = useState(null); // { dayIdx, actIdx } or null
   const [draft, setDraft] = useState("");
   const [draftNotes, setDraftNotes] = useState("");
@@ -65,7 +71,16 @@ export default function Itinerary({ itinerary, onUpdateItinerary }) {
               <span className="timeline-day-num">{String(day.day).padStart(2, "0")}</span>
             </div>
             <div className="timeline-content">
-              <h3>{day.title || `Day ${day.day}`}</h3>
+              <div className="timeline-day-header">
+                <h3>{day.title || `Day ${day.day}`}</h3>
+                {onRegenerateDay && (
+                  <RegenerateButton
+                    onClick={() => onRegenerateDay(day.day)}
+                    loading={regeneratingDay === day.day}
+                    label="Redo this day"
+                  />
+                )}
+              </div>
               <ul>
                 {day.activities?.map((act, actIdx) => {
                   const isEditing =

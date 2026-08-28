@@ -6,6 +6,12 @@ import {
   BUDGET_ESTIMATE_SCHEMA,
   FEASIBILITY_SCHEMA,
   TRIP_PLAN_SCHEMA,
+  attractionSchema,
+  weatherSchema,
+  foodSchema,
+  shoppingItemSchema,
+  packingListSchema,
+  itineraryDaySchema,
 } from "./tripSchemas";
 import logger from "./logger";
 
@@ -545,4 +551,138 @@ export async function generateTripPlan(formData) {
     attractions: attractionsWithImages,
     heroImage: hero,
   };
+}
+
+/**
+ * Section-level regeneration: redo just one part of an already-generated
+ * trip (e.g. a repetitive attraction list) instead of the whole plan.
+ * Each entry describes how to build the focused prompt/schema for that
+ * section and, where useful, how to steer the model away from repeating
+ * what's already there.
+ */
+const SECTION_REGENERATORS = {
+  attractions: {
+    schema: { type: "ARRAY", items: attractionSchema },
+    buildPrompt: (trip, formData) => {
+      const existingNames = (trip.attractions || []).map((a) => a.name);
+      const tripTypeContext = TRIP_TYPE_LABELS[formData.tripType] || "a general traveler";
+      return `
+Suggest 5-8 real, well-known attractions in ${formData.destination}, suited to ${tripTypeContext}. Mix of categories (Landmark, Museum, Nature, Religious, Market, Viewpoint), not all the same type.
+${
+  existingNames.length
+    ? `Do NOT repeat any of these already-suggested places: ${existingNames.join(", ")}. Find different real places instead.`
+    : ""
+}
+historicalSignificance must be factually grounded (real dates, rulers, events) where the place has genuine history, or null otherwise — do not invent history.
+Every field must contain real, specific content about ${formData.destination} — never placeholder or filler text.
+`.trim();
+    },
+  },
+  weather: {
+    schema: weatherSchema,
+    buildPrompt: (trip, formData) => `
+Give realistic typical seasonal weather for ${formData.destination}, exactly 12 months (January through December), based on real historical climate averages — not a live forecast.
+rating reflects how good that month is for tourism (weather + crowds + typical conditions) — "best" for the ideal window, "avoid" for genuinely bad months (monsoon, extreme heat/cold), "good"/"okay" in between.
+bestFor should be genuinely month-specific (a real festival/event, a seasonal fruit/dish, a seasonal activity) — don't repeat generic sightseeing advice across months. Use null if nothing distinct applies that month.
+`.trim(),
+  },
+  food: {
+    schema: foodSchema,
+    buildPrompt: (trip, formData) => `
+Suggest 5-8 real, well-known local dishes and 3-5 real local beverages actually associated with ${formData.destination} — not generic dishes. mealCostEstimate amounts are PER PERSON per meal, in ${formData.currency}, realistic for ${formData.destination}'s cost of living.
+`.trim(),
+  },
+  shopping: {
+    schema: { type: "ARRAY", items: shoppingItemSchema },
+    buildPrompt: (trip, formData) => `
+Suggest 4-6 real local products/crafts/souvenirs genuinely associated with ${formData.destination}, with realistic price ranges in ${formData.currency}.
+`.trim(),
+  },
+  packingList: {
+    schema: packingListSchema,
+    buildPrompt: (trip, formData) => `
+Build a packing list (clothing, documents, electronics, toiletries, misc) tailored to ${formData.destination}'s typical climate and a ${formData.days}-day trip.
+`.trim(),
+  },
+};
+
+/**
+ * Regenerates one section of an existing trip plan (attractions, weather,
+ * food, shopping, or packingList) without touching the rest of the plan.
+ * Returns just the new section value — the caller merges it into trip
+ * state and re-caches.
+ */
+export async function regenerateSection(sectionKey, trip, formData) {
+  const config = SECTION_REGENERATORS[sectionKey];
+  if (!config) {
+    throw new Error(`Unknown section: ${sectionKey}`);
+  }
+
+  const raw = await generateCompletion({
+    system: SYSTEM_PROMPT,
+    prompt: config.buildPrompt(trip, formData),
+    temperature: 0.8,
+    maxTokens: 3000,
+    json: true,
+    schema: config.schema,
+    thinkingLevel: "LOW",
+  });
+
+  let result;
+  try {
+    result = JSON.parse(cleanJsonResponse(raw));
+  } catch (err) {
+    logger.error(`Failed to parse regenerated ${sectionKey}:`, err, raw);
+    throw new Error("Couldn't regenerate that section. Please try again.");
+  }
+
+  if (sectionKey === "attractions") {
+    const names = (Array.isArray(result) ? result : []).map((a) => a.name);
+    const images = await getAttractionImages(names, formData.destination).catch(() => []);
+    return result.map((attraction, idx) => ({
+      ...attraction,
+      image: images[idx] || null,
+    }));
+  }
+
+  return result;
+}
+
+/**
+ * Regenerates a single day of the itinerary in place, keeping every other
+ * day untouched. Shares context about the other days' themes so the model
+ * doesn't repeat an activity already planned elsewhere in the trip.
+ */
+export async function regenerateItineraryDay(dayNumber, trip, formData) {
+  const otherDays = (trip.itinerary || [])
+    .filter((d) => d.day !== dayNumber)
+    .map((d) => `Day ${d.day}: ${d.title}`)
+    .join("; ");
+  const tripTypeContext = TRIP_TYPE_LABELS[formData.tripType] || "a general traveler";
+
+  const prompt = `
+Plan day ${dayNumber} of a ${formData.days}-day trip to ${formData.destination}, suited to ${tripTypeContext}. Give it a short theme title and Morning/Afternoon/Evening activities.
+${otherDays ? `The other days in this trip already cover: ${otherDays}. Pick a different theme and different activities for day ${dayNumber} — don't repeat what's already planned on those days.` : ""}
+Every field must contain real, specific content about ${formData.destination} — never placeholder or filler text.
+`.trim();
+
+  const raw = await generateCompletion({
+    system: SYSTEM_PROMPT,
+    prompt,
+    temperature: 0.8,
+    maxTokens: 1500,
+    json: true,
+    schema: itineraryDaySchema,
+    thinkingLevel: "LOW",
+  });
+
+  let result;
+  try {
+    result = JSON.parse(cleanJsonResponse(raw));
+  } catch (err) {
+    logger.error("Failed to parse regenerated itinerary day:", err, raw);
+    throw new Error("Couldn't regenerate that day. Please try again.");
+  }
+
+  return { ...result, day: dayNumber };
 }

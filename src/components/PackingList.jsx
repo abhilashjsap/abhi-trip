@@ -6,7 +6,9 @@ const CATEGORY_LABELS = {
   misc: "Miscellaneous",
 };
 
-export default function PackingList({ packingList }) {
+import RegenerateButton from "./RegenerateButton";
+
+export default function PackingList({ packingList, onRegenerate, regenerating }) {
   if (!packingList) return null;
 
   const categories = Object.keys(packingList).filter(
@@ -17,9 +19,14 @@ export default function PackingList({ packingList }) {
 
   return (
     <section className="packing-list">
-      <div className="section-heading">
-        <span className="section-eyebrow">Before you go</span>
-        <h2>Packing list</h2>
+      <div className="section-heading section-heading-with-action">
+        <div>
+          <span className="section-eyebrow">Before you go</span>
+          <h2>Packing list</h2>
+        </div>
+        {onRegenerate && (
+          <RegenerateButton onClick={onRegenerate} loading={regenerating} />
+        )}
       </div>
       <div className="packing-grid">
         {categories.map((category) => (

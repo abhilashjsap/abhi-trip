@@ -1,3 +1,5 @@
+import RegenerateButton from "./RegenerateButton";
+
 const RATING_LABELS = {
   best: "Best",
   good: "Good",
@@ -5,16 +7,21 @@ const RATING_LABELS = {
   avoid: "Avoid",
 };
 
-export default function Weather({ weather }) {
+export default function Weather({ weather, onRegenerate, regenerating }) {
   if (!weather?.months?.length) return null;
 
   const { months, bestMonthsSummary, avoidMonthsSummary } = weather;
 
   return (
     <section className="weather-section">
-      <div className="section-heading">
-        <span className="section-eyebrow">When to go</span>
-        <h2>Weather by month</h2>
+      <div className="section-heading section-heading-with-action">
+        <div>
+          <span className="section-eyebrow">When to go</span>
+          <h2>Weather by month</h2>
+        </div>
+        {onRegenerate && (
+          <RegenerateButton onClick={onRegenerate} loading={regenerating} />
+        )}
       </div>
 
       <div className="weather-summary">

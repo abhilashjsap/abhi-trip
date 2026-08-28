@@ -412,6 +412,50 @@ button:disabled {
   margin: 4rem 0 1.75rem;
 }
 
+.section-heading-with-action {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.regenerate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.regenerate-btn:hover:not(:disabled) {
+  border-color: var(--rust);
+  color: var(--rust);
+}
+
+.regenerate-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.regenerate-icon {
+  display: inline-block;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.regenerate-icon.spinning {
+  animation: spin 0.9s linear infinite;
+}
+
 .section-eyebrow {
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -613,6 +657,13 @@ button:disabled {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--paper);
+}
+
+.timeline-day-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .timeline-content h3 {

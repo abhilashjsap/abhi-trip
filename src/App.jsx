@@ -100,6 +100,15 @@ export default function App() {
     addTripToHistory(updated); // keep history entry in sync with edits
   };
 
+  // General-purpose version of the above, for section regeneration
+  // (attractions, weather, food, shopping, packing list, single itinerary
+  // days) — takes the whole next trip object rather than just the itinerary.
+  const handleUpdateTrip = (nextTrip) => {
+    setTrip(nextTrip);
+    cacheCurrentTrip(nextTrip);
+    addTripToHistory(nextTrip);
+  };
+
   const handleSelectFromHistory = (selectedTrip) => {
     setTrip(selectedTrip);
     cacheCurrentTrip(selectedTrip);
@@ -142,6 +151,7 @@ export default function App() {
           trip={trip}
           onReset={handleReset}
           onUpdateItinerary={handleUpdateItinerary}
+          onUpdateTrip={handleUpdateTrip}
         />
       </div>
     );

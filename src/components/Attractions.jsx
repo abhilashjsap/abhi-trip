@@ -1,11 +1,18 @@
-export default function Attractions({ attractions }) {
+import RegenerateButton from "./RegenerateButton";
+
+export default function Attractions({ attractions, onRegenerate, regenerating }) {
   if (!attractions?.length) return null;
 
   return (
     <section className="attractions">
-      <div className="section-heading">
-        <span className="section-eyebrow">Where to go</span>
-        <h2>Places worth your time</h2>
+      <div className="section-heading section-heading-with-action">
+        <div>
+          <span className="section-eyebrow">Where to go</span>
+          <h2>Places worth your time</h2>
+        </div>
+        {onRegenerate && (
+          <RegenerateButton onClick={onRegenerate} loading={regenerating} />
+        )}
       </div>
 
       <div className="attractions-scroll">
