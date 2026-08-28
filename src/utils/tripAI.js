@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { generateCompletion, MODEL_SMALL } from "./gemini";
 import { getDestinationHero, getAttractionImages } from "./unsplash";
+import { getExchangeRate } from "./fx";
 import {
   BUDGET_ESTIMATE_SCHEMA,
   FEASIBILITY_SCHEMA,
@@ -510,11 +511,18 @@ export async function generateTripPlan(formData) {
   }
 
   const attractionNames = (parsed.attractions || []).map((a) => a.name);
-  const [hero, attractionImages] = await Promise.all([
+  const localCode = parsed.currencyInfo?.localCurrencyCode;
+  const [hero, attractionImages, liveRate] = await Promise.all([
     getDestinationHero(formData.destination).catch(() => null),
     getAttractionImages(attractionNames, formData.destination).catch(
       () => []
     ),
+    // Best-effort upgrade over the AI's guessed exchange rate — only kicks
+    // in for currencies Frankfurter actually covers (~30 major ones), and
+    // silently keeps the AI's estimate otherwise (see fx.js).
+    parsed.currencyInfo?.isForeign && localCode
+      ? getExchangeRate(formData.currency, localCode)
+      : Promise.resolve(null),
   ]);
 
   const attractionsWithImages = (parsed.attractions || []).map(
@@ -523,6 +531,11 @@ export async function generateTripPlan(formData) {
       image: attractionImages[idx] || null,
     })
   );
+
+  if (liveRate != null && parsed.currencyInfo) {
+    parsed.currencyInfo.oneUnitOfInputCurrencyInLocal = liveRate;
+    parsed.currencyInfo.exchangeRateNote = "live rate";
+  }
 
   return {
     id: uuidv4(),
