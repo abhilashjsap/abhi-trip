@@ -495,22 +495,26 @@ export async function generateTripPlan(formData, onProgress) {
     prompt,
     temperature: 0.7,
     // Gemini's "thinking" tokens draw from this same budget before the
-    // visible JSON is written (see generateCompletion's thinkingLevel doc),
-    // so this needs real headroom beyond just the ~3-3.5k tokens the JSON
-    // itself runs — both models support up to 65,536 output tokens, so
-    // there's plenty of room.
-    maxTokens: 10000,
+    // visible JSON is written (see generateCompletion's thinkingLevel doc).
+    // 10000 wasn't enough headroom for a verbose destination with lots of
+    // real content to say (long activity notes, detailed history) combined
+    // with "MEDIUM" thinking below — hit a hard mid-string truncation on a
+    // Bangkok plan. Both models support up to 65,536 output tokens, so
+    // there's room to be much more generous here.
+    maxTokens: 16000,
     json: true,
     schema: TRIP_PLAN_SCHEMA,
     onChunk: onProgress,
     // This prompt asks for a LOT in one shot (12 months of weather, a full
-    // itinerary, attractions, food, shopping, currency info, ...). "LOW"
-    // (the default) was tuned purely to avoid truncation and was too
-    // shallow for a schema this large — it was producing lazy placeholder
-    // text ("reason text", "warning text") on some of the less prominent
-    // fields instead of real destination-specific content. We have plenty
-    // of maxTokens headroom now, so give it real reasoning depth.
-    thinkingLevel: "MEDIUM",
+    // itinerary, attractions, food, shopping, currency info, ...). Went to
+    // "MEDIUM" briefly to fix lazy placeholder text ("reason text") on
+    // less-prominent fields, but that traded away budget headroom (see
+    // above) *and* added real latency — thinking tokens take time to
+    // generate too, on top of eating into the JSON's own budget. The
+    // explicit "never placeholder text" rule in this prompt's Rules section
+    // is a second, independent defense against the same failure that
+    // doesn't cost either budget or time, so it carries this alone now.
+    thinkingLevel: "LOW",
   });
 
   let parsed;
