@@ -49,13 +49,13 @@ const weatherMonthSchema = {
     month: { type: "STRING" },
     avgHighC: { type: "NUMBER" },
     avgLowC: { type: "NUMBER" },
-    conditions: { type: "STRING" },
+    conditions: { type: "STRING", maxLength: "120" },
     rating: {
       type: "STRING",
       format: "enum",
       enum: ["best", "good", "okay", "avoid"],
     },
-    bestFor: { type: "STRING", nullable: true },
+    bestFor: { type: "STRING", nullable: true, maxLength: "150" },
   },
   required: ["month", "avgHighC", "avgLowC", "conditions", "rating"],
 };
@@ -65,7 +65,7 @@ const activitySchema = {
   properties: {
     time: { type: "STRING" },
     activity: { type: "STRING" },
-    notes: { type: "STRING", nullable: true },
+    notes: { type: "STRING", nullable: true, maxLength: "300" },
   },
   required: ["time", "activity"],
 };
@@ -85,8 +85,8 @@ export const attractionSchema = {
   properties: {
     name: { type: "STRING" },
     category: { type: "STRING" },
-    description: { type: "STRING" },
-    historicalSignificance: { type: "STRING", nullable: true },
+    description: { type: "STRING", maxLength: "400" },
+    historicalSignificance: { type: "STRING", nullable: true, maxLength: "400" },
     bestTimeToVisit: { type: "STRING" },
     estimatedDuration: { type: "STRING" },
   },
@@ -99,7 +99,7 @@ const flightLegSchema = {
     priceRangeLow: { type: "NUMBER" },
     priceRangeHigh: { type: "NUMBER" },
     typicalAirlines: { type: "ARRAY", items: { type: "STRING" } },
-    notes: { type: "STRING" },
+    notes: { type: "STRING", maxLength: "300" },
   },
   required: ["priceRangeLow", "priceRangeHigh", "typicalAirlines", "notes"],
 };
@@ -112,7 +112,7 @@ const flightsSchema = {
     destination: { type: "STRING" },
     outbound: flightLegSchema,
     returnFlight: flightLegSchema,
-    bookingTip: { type: "STRING" },
+    bookingTip: { type: "STRING", maxLength: "300" },
   },
   required: ["departureCity", "destination", "outbound", "returnFlight", "bookingTip"],
 };
@@ -122,7 +122,7 @@ const dishSchema = {
   properties: {
     name: { type: "STRING" },
     type: { type: "STRING" },
-    description: { type: "STRING" },
+    description: { type: "STRING", maxLength: "300" },
   },
   required: ["name", "type", "description"],
 };
@@ -131,7 +131,7 @@ const beverageSchema = {
   type: "OBJECT",
   properties: {
     name: { type: "STRING" },
-    description: { type: "STRING" },
+    description: { type: "STRING", maxLength: "300" },
   },
   required: ["name", "description"],
 };
@@ -157,7 +157,7 @@ export const foodSchema = {
         lunch: mealCostTierSchema,
         dinner: mealCostTierSchema,
         currency: { type: "STRING" },
-        notes: { type: "STRING" },
+        notes: { type: "STRING", maxLength: "300" },
       },
       required: ["breakfast", "lunch", "dinner", "currency", "notes"],
     },
@@ -169,7 +169,7 @@ export const shoppingItemSchema = {
   type: "OBJECT",
   properties: {
     item: { type: "STRING" },
-    description: { type: "STRING" },
+    description: { type: "STRING", maxLength: "300" },
     whereToBuy: { type: "STRING" },
     priceRange: { type: "STRING" },
   },
@@ -188,20 +188,29 @@ export const currencyInfoSchema = {
     // undefined = 2.44 INR"). Safe to force these always-present: when
     // isForeign is false, CurrencyInfo.jsx never renders this section at
     // all, so whatever trivial value the model gives them is never shown.
-    localCurrencyName: { type: "STRING" },
-    localCurrencyCode: { type: "STRING" },
+    localCurrencyName: { type: "STRING", maxLength: "60" },
+    localCurrencyCode: { type: "STRING", maxLength: "10" },
     oneUnitOfInputCurrencyInLocal: { type: "NUMBER" },
-    exchangeRateNote: { type: "STRING", nullable: true },
+    exchangeRateNote: { type: "STRING", nullable: true, maxLength: "60" },
     recommendation: {
       type: "STRING",
       format: "enum",
       enum: ["carry-cash", "get-local-currency", "card-friendly"],
       nullable: true,
     },
-    recommendationReason: { type: "STRING", nullable: true },
-    airportExchangeWarning: { type: "STRING", nullable: true },
-    betterExchangeOptions: { type: "ARRAY", items: { type: "STRING" }, nullable: true },
-    cardTips: { type: "STRING", nullable: true },
+    // recommendationReason is where a Gemini repetition-loop bug blew up to
+    // 73,000+ characters in production (12,425x "Bye!" followed by unrelated
+    // hallucinated text), eating the whole token budget and truncating the
+    // rest of the JSON. maxLength is enforced during constrained decoding
+    // (not just post-hoc validation), so this caps the runaway at the root.
+    recommendationReason: { type: "STRING", nullable: true, maxLength: "500" },
+    airportExchangeWarning: { type: "STRING", nullable: true, maxLength: "300" },
+    betterExchangeOptions: {
+      type: "ARRAY",
+      items: { type: "STRING", maxLength: "150" },
+      nullable: true,
+    },
+    cardTips: { type: "STRING", nullable: true, maxLength: "300" },
   },
   required: [
     "isForeign",
@@ -225,7 +234,7 @@ export const plannerSchema = {
   type: "OBJECT",
   properties: {
     budgetBreakdown: { type: "ARRAY", items: budgetBreakdownLineSchema },
-    tips: { type: "ARRAY", items: { type: "STRING" } },
+    tips: { type: "ARRAY", items: { type: "STRING", maxLength: "250" } },
     totalEstimate: { type: "NUMBER" },
   },
   required: ["budgetBreakdown", "tips", "totalEstimate"],
@@ -235,8 +244,8 @@ export const weatherSchema = {
   type: "OBJECT",
   properties: {
     months: { type: "ARRAY", items: weatherMonthSchema, minItems: "12", maxItems: "12" },
-    bestMonthsSummary: { type: "STRING" },
-    avoidMonthsSummary: { type: "STRING", nullable: true },
+    bestMonthsSummary: { type: "STRING", maxLength: "300" },
+    avoidMonthsSummary: { type: "STRING", nullable: true, maxLength: "300" },
   },
   required: ["months", "bestMonthsSummary"],
 };
@@ -244,11 +253,11 @@ export const weatherSchema = {
 export const packingListSchema = {
   type: "OBJECT",
   properties: {
-    clothing: { type: "ARRAY", items: { type: "STRING" } },
-    documents: { type: "ARRAY", items: { type: "STRING" } },
-    electronics: { type: "ARRAY", items: { type: "STRING" } },
-    toiletries: { type: "ARRAY", items: { type: "STRING" } },
-    misc: { type: "ARRAY", items: { type: "STRING" } },
+    clothing: { type: "ARRAY", items: { type: "STRING", maxLength: "100" } },
+    documents: { type: "ARRAY", items: { type: "STRING", maxLength: "100" } },
+    electronics: { type: "ARRAY", items: { type: "STRING", maxLength: "100" } },
+    toiletries: { type: "ARRAY", items: { type: "STRING", maxLength: "100" } },
+    misc: { type: "ARRAY", items: { type: "STRING", maxLength: "100" } },
   },
   required: ["clothing", "documents", "electronics", "toiletries", "misc"],
 };
