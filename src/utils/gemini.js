@@ -117,6 +117,47 @@ function hasRunawayRepetition(text) {
 }
 
 /**
+ * Tracks whether the streamed text so far is currently inside a JSON string
+ * value and how long that value has gotten, incrementally as each new delta
+ * arrives (call `feed()` once per delta, in order). Independent of — and
+ * more robust than — hasRunawayRepetition: that only catches an EXACT
+ * repeated unit, so a loop that degenerates into varying-but-still-garbage
+ * text (not a literal repeat) would slip past it. No legitimate field in
+ * this app's schema needs anywhere near this many characters, repeating or
+ * not, so this catches that whole class directly instead of pattern-matching
+ * for one specific way a loop can look.
+ */
+function createRunawayStringGuard(maxLen = 4000) {
+  let inString = false;
+  let escaped = false;
+  let curLen = 0;
+
+  return function feed(delta) {
+    for (let i = 0; i < delta.length; i++) {
+      const ch = delta[i];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (ch === "\\") {
+          escaped = true;
+        } else if (ch === '"') {
+          inString = false;
+          curLen = 0;
+          continue;
+        }
+        curLen++;
+        if (curLen > maxLen) return true;
+      } else if (ch === '"') {
+        inString = true;
+        curLen = 0;
+        escaped = false;
+      }
+    }
+    return false;
+  };
+}
+
+/**
  * Classifies whether an error is worth retrying. Only transient issues
  * (network blips, 5xx server errors, timeouts) qualify — rate limits (429)
  * and auth failures (401/403) never do, since retrying those either wastes
@@ -216,6 +257,7 @@ export async function generateCompletion({
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        const feedRunawayStringGuard = createRunawayStringGuard();
         let full = "";
 
         // eslint-disable-next-line no-constant-condition
@@ -224,6 +266,7 @@ export async function generateCompletion({
           if (done) break;
 
           const piece = decoder.decode(value, { stream: true });
+          let delta = "";
           // A NUL byte (never valid in the JSON/text content itself) marks
           // the trailing usage-metadata blob api/gemini.js appends after
           // the real content — see that file for why.
@@ -231,6 +274,7 @@ export async function generateCompletion({
           if (sentinelIdx !== -1) {
             const visible = piece.slice(0, sentinelIdx);
             if (visible) {
+              delta = visible;
               full += visible;
               onChunk(full);
             }
@@ -241,11 +285,15 @@ export async function generateCompletion({
               // doesn't affect the actual generated content.
             }
           } else {
+            delta = piece;
             full += piece;
             onChunk(full);
           }
 
-          if (hasRunawayRepetition(full)) {
+          if (
+            (delta && feedRunawayStringGuard(delta)) ||
+            hasRunawayRepetition(full)
+          ) {
             reader.cancel().catch(() => {});
             throw new RepetitionLoopError(
               "The AI got stuck repeating itself instead of finishing the response."
