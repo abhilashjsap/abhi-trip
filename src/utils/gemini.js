@@ -21,7 +21,15 @@ function readTodayUsageRaw() {
   try {
     const raw = localStorage.getItem(USAGE_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
-    if (parsed?.date === today) return parsed;
+    // Normalize rather than trust the stored shape outright — a browser
+    // that used an earlier build today (pre-dating this request-count
+    // tracking) has `{date, usage: {...}}` cached with no `requests` key at
+    // all, same date, which crashed getTodayRequestCounts() on destructuring
+    // (blank-screened the whole app right after unlocking, since
+    // UsageDashboard renders immediately and nothing catches the throw).
+    if (parsed?.date === today) {
+      return { date: today, requests: parsed.requests || {} };
+    }
   } catch {
     // Corrupted or inaccessible storage — fall through to a fresh start.
   }
