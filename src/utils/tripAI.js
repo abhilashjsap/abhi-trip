@@ -496,12 +496,18 @@ export async function generateTripPlan(formData, onProgress) {
     temperature: 0.7,
     // Gemini's "thinking" tokens draw from this same budget before the
     // visible JSON is written (see generateCompletion's thinkingLevel doc).
-    // 10000 wasn't enough headroom for a verbose destination with lots of
-    // real content to say (long activity notes, detailed history) combined
-    // with "MEDIUM" thinking below — hit a hard mid-string truncation on a
-    // Bangkok plan. Both models support up to 65,536 output tokens, so
-    // there's room to be much more generous here.
-    maxTokens: 16000,
+    // 10000, then 16000, both still truncated mid-generation on genuinely
+    // detailed trips (Bangkok, then Seoul — the Seoul one hadn't even
+    // reached planner/attractions/flights/food/shopping yet, still stuck in
+    // packingList) — the per-field length estimate this was originally
+    // sized against was just wrong for how verbose a real, high-quality
+    // multi-clause note/description turns out to be at scale across the
+    // whole schema. Gemini doesn't reject a large maxTokens upfront the way
+    // Groq's TPM cap did (already confirmed: 16000 ran to completion-or-cutoff,
+    // never a request-too-large error), so there's no real downside to
+    // being generous — a typical trip finishes well under this regardless,
+    // it only matters for verbose ones. Both models support up to 65,536.
+    maxTokens: 32000,
     json: true,
     schema: TRIP_PLAN_SCHEMA,
     onChunk: onProgress,
