@@ -180,9 +180,17 @@ export const currencyInfoSchema = {
   type: "OBJECT",
   properties: {
     isForeign: { type: "BOOLEAN" },
-    localCurrencyName: { type: "STRING", nullable: true },
-    localCurrencyCode: { type: "STRING", nullable: true },
-    oneUnitOfInputCurrencyInLocal: { type: "NUMBER", nullable: true },
+    // Not actually nullable/optional even though the prompt's prose rule
+    // says these can be omitted when isForeign is false — Gemini's schema
+    // can't express "required only if isForeign is true", and making them
+    // nullable gave the model explicit license to skip localCurrencyCode
+    // even when isForeign WAS true, which it did (confirmed live: "1
+    // undefined = 2.44 INR"). Safe to force these always-present: when
+    // isForeign is false, CurrencyInfo.jsx never renders this section at
+    // all, so whatever trivial value the model gives them is never shown.
+    localCurrencyName: { type: "STRING" },
+    localCurrencyCode: { type: "STRING" },
+    oneUnitOfInputCurrencyInLocal: { type: "NUMBER" },
     exchangeRateNote: { type: "STRING", nullable: true },
     recommendation: {
       type: "STRING",
@@ -195,7 +203,12 @@ export const currencyInfoSchema = {
     betterExchangeOptions: { type: "ARRAY", items: { type: "STRING" }, nullable: true },
     cardTips: { type: "STRING", nullable: true },
   },
-  required: ["isForeign"],
+  required: [
+    "isForeign",
+    "localCurrencyName",
+    "localCurrencyCode",
+    "oneUnitOfInputCurrencyInLocal",
+  ],
 };
 
 const budgetBreakdownLineSchema = {
