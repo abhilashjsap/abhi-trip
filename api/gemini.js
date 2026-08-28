@@ -33,6 +33,7 @@ export default {
       temperature = 0.7,
       maxTokens = 4096,
       json = false,
+      schema,
       model,
       thinkingLevel = "LOW",
     } = body || {};
@@ -62,6 +63,13 @@ export default {
           // 3.5 models reject) keeps that overhead small.
           thinkingConfig: { thinkingLevel },
           ...(json ? { responseMimeType: "application/json" } : {}),
+          // Structural validation server-side, on top of the loose JSON
+          // mode above — the model can no longer emit a response that's
+          // shaped wrong (missing fields, wrong types), only content that's
+          // wrong. Requires responseMimeType: "application/json" (set above
+          // whenever schema is passed, since callers only pass a schema
+          // alongside json: true).
+          ...(json && schema ? { responseSchema: schema } : {}),
         },
       });
 

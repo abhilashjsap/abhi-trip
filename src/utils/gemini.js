@@ -95,6 +95,9 @@ function sleep(ms) {
  * @param {number} [params.temperature=0.7]
  * @param {number} [params.maxTokens=4096]
  * @param {boolean} [params.json=false] - request JSON output
+ * @param {Object} [params.schema] - Gemini responseSchema; only applied
+ *   when json is true. Enforces structural validity server-side instead of
+ *   just hoping the model's prose-described JSON shape holds up.
  * @param {string} [params.model=MODEL_LARGE] - which Gemini model to use
  * @param {string} [params.thinkingLevel="LOW"] - MINIMAL/LOW/MEDIUM/HIGH.
  *   Thinking tokens draw from the same maxTokens budget as the visible
@@ -107,6 +110,7 @@ export async function generateCompletion({
   temperature = 0.7,
   maxTokens = 4096,
   json = false,
+  schema,
   model = MODEL_LARGE,
   thinkingLevel = "LOW",
 }) {
@@ -125,7 +129,7 @@ export async function generateCompletion({
       const res = await fetch("/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system, prompt, temperature, maxTokens, json, model, thinkingLevel }),
+        body: JSON.stringify({ system, prompt, temperature, maxTokens, json, schema, model, thinkingLevel }),
       });
 
       const data = await res.json().catch(() => null);

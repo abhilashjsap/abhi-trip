@@ -1,6 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 import { generateCompletion, MODEL_SMALL } from "./gemini";
 import { getDestinationHero, getAttractionImages } from "./unsplash";
+import {
+  BUDGET_ESTIMATE_SCHEMA,
+  FEASIBILITY_SCHEMA,
+  TRIP_PLAN_SCHEMA,
+} from "./tripSchemas";
 import logger from "./logger";
 
 const SYSTEM_PROMPT = `You are AbhiTrip, an expert AI travel planner. You produce
@@ -145,6 +150,7 @@ Rules:
     temperature: 0.3,
     maxTokens: 1500,
     json: true,
+    schema: BUDGET_ESTIMATE_SCHEMA,
     model: MODEL_SMALL,
     thinkingLevel: "MINIMAL",
   });
@@ -244,6 +250,7 @@ Rules:
     temperature: 0.3,
     maxTokens: 1500,
     json: true,
+    schema: FEASIBILITY_SCHEMA,
     model: MODEL_SMALL,
     thinkingLevel: "MINIMAL",
   });
@@ -483,6 +490,7 @@ export async function generateTripPlan(formData) {
     // there's plenty of room.
     maxTokens: 10000,
     json: true,
+    schema: TRIP_PLAN_SCHEMA,
     // This prompt asks for a LOT in one shot (12 months of weather, a full
     // itinerary, attractions, food, shopping, currency info, ...). "LOW"
     // (the default) was tuned purely to avoid truncation and was too
