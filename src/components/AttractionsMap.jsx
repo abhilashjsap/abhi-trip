@@ -59,7 +59,7 @@ export default function AttractionsMap({ attractions, destination }) {
     .filter(Boolean);
 
   return (
-    <section className="attractions-map-section" data-html2canvas-ignore="true">
+    <section className="attractions-map-section">
       <div className="section-heading">
         <span className="section-eyebrow">On the map</span>
         <h2>Where things are</h2>

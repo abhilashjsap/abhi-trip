@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Itinerary from "./Itinerary";
 import PackingList from "./PackingList";
 import TripPlanner from "./TripPlanner";
@@ -10,12 +10,11 @@ import CurrencyInfo from "./CurrencyInfo";
 import Weather from "./Weather";
 import AttractionsMap from "./AttractionsMap";
 import TripStub from "./TripStub";
-import { exportElementToPdf } from "../utils/pdfExport";
+import { exportTripToPdf } from "../utils/pdfExport";
 import { regenerateSection, regenerateItineraryDay } from "../utils/tripAI";
 import logger from "../utils/logger";
 
 export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateTrip }) {
-  const captureRef = useRef(null);
   const [exporting, setExporting] = useState(false);
   // Holds the section key (e.g. "attractions") or "day-3" while a
   // regeneration request is in flight, so only that one section shows a
@@ -31,7 +30,7 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
     setExporting(true);
     try {
       const filename = `AbhiTrip-${(input?.destination || "trip").replace(/\s+/g, "-")}`;
-      await exportElementToPdf(captureRef.current, filename);
+      await exportTripToPdf(trip, filename);
     } catch (err) {
       logger.error("PDF export failed:", err);
     } finally {
@@ -71,7 +70,7 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
   };
 
   return (
-    <div className="trip-result" ref={captureRef}>
+    <div className="trip-result">
       <div className="hero" style={
         heroImage ? { backgroundImage: `url(${heroImage.url})` } : undefined
       }>
@@ -96,7 +95,7 @@ export default function TripResult({ trip, onReset, onUpdateItinerary, onUpdateT
       <div className="trip-body">
         <TripStub input={input} onReset={onReset} />
 
-        <div className="pdf-export-row" data-html2canvas-ignore="true">
+        <div className="pdf-export-row">
           <button
             className="save-pdf-btn"
             onClick={handleSavePdf}
