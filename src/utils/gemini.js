@@ -74,31 +74,44 @@ export class RepetitionLoopError extends Error {
 }
 
 /**
- * Cheap check for a short unit (3-40 chars, must contain a letter to avoid
- * flagging legitimate repeated JSON punctuation/numbers) repeating at least
- * 8 times back-to-back at the very end of the text so far. Only looks at
- * the tail — cost stays constant regardless of how much has streamed in.
+ * Cheap check for a unit repeating back-to-back at the very end of the text
+ * so far (must contain a letter, to avoid flagging legitimate repeated JSON
+ * punctuation/numbers). Only looks at the tail — cost stays constant
+ * regardless of how much has streamed in.
+ *
+ * Two tiers, because a loop can degenerate at either granularity (both seen
+ * live): short units (a word like "Bye!") need more repeats to rule out
+ * coincidence; long units (a whole repeated sentence) are already
+ * vanishingly unlikely to repeat 3+ times verbatim in real content, so they
+ * don't need as many to confirm — which matters because a longer unit needs
+ * a bigger tail window to even fit enough repeats to check.
  */
 function hasRunawayRepetition(text) {
-  const TAIL = 640;
+  const TAIL = 2000;
   if (text.length < TAIL) return false;
   const tail = text.slice(-TAIL);
-  const MIN_REPEATS = 8;
 
-  for (let unitLen = 3; unitLen <= 40; unitLen++) {
-    if (unitLen * MIN_REPEATS > TAIL) break;
-    const unit = tail.slice(tail.length - unitLen);
-    if (!/[a-zA-Z]/.test(unit)) continue;
+  const tiers = [
+    { minLen: 3, maxLen: 20, minRepeats: 8 },
+    { minLen: 21, maxLen: 150, minRepeats: 3 },
+  ];
 
-    let matched = true;
-    for (let i = 1; i < MIN_REPEATS; i++) {
-      const start = tail.length - unitLen * (i + 1);
-      if (tail.slice(start, start + unitLen) !== unit) {
-        matched = false;
-        break;
+  for (const { minLen, maxLen, minRepeats } of tiers) {
+    for (let unitLen = minLen; unitLen <= maxLen; unitLen++) {
+      if (unitLen * minRepeats > TAIL) break;
+      const unit = tail.slice(tail.length - unitLen);
+      if (!/[a-zA-Z]/.test(unit)) continue;
+
+      let matched = true;
+      for (let i = 1; i < minRepeats; i++) {
+        const start = tail.length - unitLen * (i + 1);
+        if (tail.slice(start, start + unitLen) !== unit) {
+          matched = false;
+          break;
+        }
       }
+      if (matched) return true;
     }
-    if (matched) return true;
   }
   return false;
 }
