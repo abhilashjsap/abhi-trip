@@ -493,7 +493,14 @@ export async function generateTripPlan(formData, onProgress) {
   const raw = await generateCompletion({
     system: SYSTEM_PROMPT,
     prompt,
-    temperature: 0.7,
+    // Lowered from 0.7 — this call has repeatedly hit Gemini's repetition-
+    // loop decoding bug live (see RepetitionLoopError/IncompleteResponseError
+    // in gemini.js), sometimes on 2 of 3 attempts in a single generate call.
+    // Higher temperature makes the decoder more likely to wander into a
+    // self-reinforcing degenerate loop in the first place; 0.5 trades a
+    // little creative variety for meaningfully more stable output on what's
+    // largely factual travel content anyway.
+    temperature: 0.5,
     // Gemini's "thinking" tokens draw from this same budget before the
     // visible JSON is written (see generateCompletion's thinkingLevel doc).
     // 10000, then 16000, both still truncated mid-generation on genuinely

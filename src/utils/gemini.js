@@ -261,7 +261,7 @@ export async function generateCompletion({
         }),
       });
 
-      let content, usageMetadata;
+      let content, usageMetadata, finishReason;
 
       if (onChunk) {
         if (!res.ok) {
@@ -275,7 +275,6 @@ export async function generateCompletion({
         const decoder = new TextDecoder();
         const feedRunawayStringGuard = createRunawayStringGuard();
         let full = "";
-        let finishReason = null;
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -352,6 +351,27 @@ export async function generateCompletion({
 
         content = data?.text;
         usageMetadata = data?.usageMetadata;
+        finishReason = data?.finishReason;
+
+        // Same class of failure as the streaming path (see the comments
+        // above) can happen here too — regenerateSection/regenerateItinerary
+        // Day use this non-streaming branch and share the exact schemas that
+        // have already produced runaway/repeating fields live.
+        if (
+          content &&
+          (hasRunawayRepetition(content) || createRunawayStringGuard()(content))
+        ) {
+          throw new RepetitionLoopError(
+            "The AI got stuck repeating itself instead of finishing the response."
+          );
+        }
+
+        if (finishReason !== "STOP") {
+          throw new IncompleteResponseError(
+            `The AI stopped before finishing (${finishReason || "no finish signal received"}).`,
+            finishReason
+          );
+        }
       }
 
       if (!content) {
