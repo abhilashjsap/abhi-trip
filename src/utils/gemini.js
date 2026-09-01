@@ -11,8 +11,14 @@ import logger from "./logger";
 // schema maxLength caps, a lowered temperature, and fixing a destination-
 // string quality issue — none of which reduced the frequency, pointing at
 // the model itself rather than anything in this app's prompt/schema.
-// gemini-2.5-flash is the established, GA equivalent.
-export const MODEL_LARGE = "gemini-2.5-flash";
+//
+// First tried gemini-2.5-flash, which immediately 404'd live: "This model
+// models/gemini-2.5-flash is no longer available to new users." — the
+// model lineup had already moved past what research/training data showed.
+// Google's own error named the replacement directly: gemini-3.6-flash.
+// Following that first-party live signal over further (evidently stale)
+// web research.
+export const MODEL_LARGE = "gemini-3.6-flash";
 export const MODEL_SMALL = "gemini-3.5-flash-lite";
 
 const USAGE_STORAGE_KEY = "abhitrip_usage_log";
