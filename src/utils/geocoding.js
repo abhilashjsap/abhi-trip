@@ -44,7 +44,21 @@ export async function searchPlaces(query) {
 
         // A clean, short label for the dropdown — falls back to the full
         // display name if we can't confidently pull city/country apart.
-        const label = city && country ? `${city}, ${country}` : place.display_name;
+        // Searching for a whole country (e.g. "Vietnam") gives Nominatim no
+        // city/town/village/county component, so `city` falls back to
+        // place.name — which for a country-level result IS the country name
+        // — producing "Vietnam, Vietnam". That duplicated destination string
+        // then flowed into every AI prompt for that trip, and multiple
+        // trips built from country-only searches (Vietnam, South Korea)
+        // went on to repeatedly hit the model's repetition-loop bug — very
+        // plausibly the redundant phrasing biasing the decoder toward
+        // repeating itself, not coincidence.
+        const label =
+          city && country
+            ? city === country
+              ? country
+              : `${city}, ${country}`
+            : place.display_name;
 
         return {
           label,
