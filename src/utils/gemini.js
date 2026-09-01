@@ -3,7 +3,16 @@ import logger from "./logger";
 // Two separate models, each with its own free-tier quota. Mirrors the old
 // Groq split: the big model handles the full plan (needs real quality),
 // the small/lite one handles the cheap feasibility + budget-estimate JSON.
-export const MODEL_LARGE = "gemini-3.5-flash";
+//
+// MODEL_LARGE moved off gemini-3.5-flash (2026-09-01): a newer preview-tier
+// model with an unusually tight 20-requests/day free quota (confirmed live
+// via a real 429) AND a decoder repetition-loop bug that kept recurring
+// near-100% of attempts on multiple distinct destinations even after
+// schema maxLength caps, a lowered temperature, and fixing a destination-
+// string quality issue — none of which reduced the frequency, pointing at
+// the model itself rather than anything in this app's prompt/schema.
+// gemini-2.5-flash is the established, GA equivalent.
+export const MODEL_LARGE = "gemini-2.5-flash";
 export const MODEL_SMALL = "gemini-3.5-flash-lite";
 
 const USAGE_STORAGE_KEY = "abhitrip_usage_log";
