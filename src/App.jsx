@@ -258,7 +258,6 @@ export default function App() {
             key={historyKey}
             onSelect={handleSelectFromHistory}
             onClose={() => setView("form")}
-            refreshKey={historyKey}
             onRefresh={() => setHistoryKey((k) => k + 1)}
           />
         ) : (

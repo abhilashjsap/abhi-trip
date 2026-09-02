@@ -185,7 +185,7 @@ export const bewareOfItemSchema = {
   required: ["title", "description"],
 };
 
-export const currencyInfoSchema = {
+const currencyInfoSchema = {
   type: "OBJECT",
   properties: {
     isForeign: { type: "BOOLEAN" },
@@ -239,7 +239,7 @@ const budgetBreakdownLineSchema = {
   required: ["category", "amount", "percentage"],
 };
 
-export const plannerSchema = {
+const plannerSchema = {
   type: "OBJECT",
   properties: {
     budgetBreakdown: { type: "ARRAY", items: budgetBreakdownLineSchema },

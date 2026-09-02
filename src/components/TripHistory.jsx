@@ -1,6 +1,6 @@
 import { getTripHistory, removeTripFromHistory } from "../utils/tripStorage";
 
-export default function TripHistory({ onSelect, onClose, refreshKey, onRefresh }) {
+export default function TripHistory({ onSelect, onClose, onRefresh }) {
   const history = getTripHistory();
 
   const handleRemove = (e, tripId) => {
