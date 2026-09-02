@@ -11,6 +11,7 @@ import Weather from "./Weather";
 import BewareOf from "./BewareOf";
 import AttractionsMap from "./AttractionsMap";
 import TripStub from "./TripStub";
+import TripChat from "./TripChat";
 import { exportTripToPdf } from "../utils/pdfExport";
 import { regenerateSection, regenerateItineraryDay } from "../utils/tripAI";
 import { shareTrip } from "../utils/tripShare";
@@ -217,6 +218,8 @@ export default function TripResult({
         />
         <TripPlanner planner={planner} currency={input?.currency} />
       </div>
+
+      <TripChat trip={trip} />
     </div>
   );
 }
