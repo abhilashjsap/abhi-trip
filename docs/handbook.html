@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AbhiTrip Handbook</title>
+<style>
+  :root {
+    --paper: #eef1ee;
+    --surface: #ffffff;
+    --ink: #16202b;
+    --ink-soft: #52626f;
+    --ink-faint: #7c8a95;
+    --line: rgba(22, 32, 43, 0.13);
+    --line-strong: rgba(22, 32, 43, 0.24);
+    --accent: #1b6e71;
+    --accent-soft: rgba(27, 110, 113, 0.1);
+    --warm: #b8862e;
+    --warm-soft: rgba(184, 134, 46, 0.12);
+    --code-bg: #0f1720;
+    --code-ink: #d7e2e2;
+    --shadow: 0 1px 2px rgba(22, 32, 43, 0.06), 0 8px 24px -12px rgba(22, 32, 43, 0.18);
+    --font-display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --font-body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10161c;
+      --surface: #171f27;
+      --ink: #e7ecec;
+      --ink-soft: #9fb0b8;
+      --ink-faint: #71828b;
+      --line: rgba(231, 236, 236, 0.13);
+      --line-strong: rgba(231, 236, 236, 0.24);
+      --accent: #59bdba;
+      --accent-soft: rgba(89, 189, 186, 0.14);
+      --warm: #dcac54;
+      --warm-soft: rgba(220, 172, 84, 0.14);
+      --code-bg: #0a1015;
+      --code-ink: #cfe3e2;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #10161c;
+    --surface: #171f27;
+    --ink: #e7ecec;
+    --ink-soft: #9fb0b8;
+    --ink-faint: #71828b;
+    --line: rgba(231, 236, 236, 0.13);
+    --line-strong: rgba(231, 236, 236, 0.24);
+    --accent: #59bdba;
+    --accent-soft: rgba(89, 189, 186, 0.14);
+    --warm: #dcac54;
+    --warm-soft: rgba(220, 172, 84, 0.14);
+    --code-bg: #0a1015;
+    --code-ink: #cfe3e2;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 1.5rem 6rem;
+  }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead {
+    padding: 3.5rem 0 2.25rem;
+    border-bottom: 1px solid var(--line-strong);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .masthead-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .masthead-kicker::before {
+    content: "";
+    width: 26px;
+    height: 1px;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.3rem, 4.4vw, 3.4rem);
+    letter-spacing: -0.01em;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+  }
+
+  .masthead-sub {
+    color: var(--ink-soft);
+    font-size: 1.08rem;
+    max-width: 46ch;
+    margin: 0;
+  }
+
+  .masthead-meta {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    text-align: right;
+    line-height: 1.7;
+    white-space: nowrap;
+  }
+
+  .masthead-meta strong { color: var(--ink-soft); font-weight: 500; }
+
+  /* ---------- Body grid: sidebar + content ---------- */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 3.5rem;
+    margin-top: 2.75rem;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 1.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 900px) {
+    nav.toc {
+      position: static;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      background: var(--surface);
+    }
+  }
+
+  .toc-label {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    margin-bottom: 0.85rem;
+    display: block;
+  }
+
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  nav.toc a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.15rem 0;
+    border-left: 2px solid transparent;
+    padding-left: 0.7rem;
+    margin-left: -0.7rem;
+    transition: color 0.12s ease, border-color 0.12s ease;
+  }
+
+  nav.toc a:hover { color: var(--accent); border-left-color: var(--line-strong); }
+
+  nav.toc .n { color: var(--ink-faint); }
+
+  main { min-width: 0; }
+
+  section.chapter {
+    padding: 3.4rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  section.chapter:last-of-type { border-bottom: none; padding-bottom: 0; }
+  section.chapter:first-of-type { padding-top: 0; }
+
+  .chapter-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.85rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .chapter-num {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  section.chapter h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.7rem;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  section.chapter h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.18rem;
+    margin: 2rem 0 0.75rem;
+  }
+
+  section.chapter > .chapter-head + p,
+  section.chapter > p.lede {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 68ch;
+    margin-top: 0;
+  }
+
+  .prose { max-width: 68ch; }
+  .prose p { margin: 0.9rem 0; }
+  .prose ul, .prose ol { max-width: 68ch; padding-left: 1.3rem; }
+  .prose li { margin: 0.45rem 0; }
+
+  strong { font-weight: 600; color: var(--ink); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.87em;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+  }
+
+  a { color: var(--accent); }
+
+  /* ---------- Feature grid ---------- */
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.9rem;
+    margin: 1.5rem 0;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+  }
+
+  .feature-card h4 {
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin: 0 0 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .feature-card p {
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* ---------- Diagram ---------- */
+
+  figure.diagram {
+    margin: 1.75rem 0 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.5rem 1.25rem 1.1rem;
+  }
+
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+
+  figure.diagram text { font-family: var(--font-mono); }
+
+  figcaption {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+  }
+
+  /* ---------- Tables ---------- */
+
+  .table-wrap { overflow-x: auto; margin: 1.5rem 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    min-width: 560px;
+  }
+
+  thead th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 0.9rem 0.7rem;
+    border-bottom: 1px solid var(--line-strong);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    color: var(--ink-soft);
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody td:first-child, tbody td.mono {
+    font-family: var(--font-mono);
+    font-size: 0.83rem;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    padding: 0.16em 0.55em;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+
+  .pill-free { background: var(--accent-soft); color: var(--accent); }
+  .pill-caution { background: var(--warm-soft); color: var(--warm); }
+  .pill-server { background: rgba(22, 32, 43, 0.08); color: var(--ink-soft); }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .pill-server { background: rgba(231, 236, 236, 0.1); }
+  }
+
+  :root[data-theme="dark"] .pill-server { background: rgba(231, 236, 236, 0.1); }
+
+  /* ---------- Decision log ---------- */
+
+  .decision {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+    padding: 1.1rem 0;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  .decision:last-child { border-bottom: none; }
+
+  .decision-title {
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+
+  .decision-why {
+    font-size: 0.87rem;
+    color: var(--ink-soft);
+    max-width: 68ch;
+  }
+
+  .decision-why b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---------- Callouts ---------- */
+
+  .callout {
+    border-left: 3px solid var(--warm);
+    background: var(--warm-soft);
+    border-radius: 0 8px 8px 0;
+    padding: 0.85rem 1.1rem;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    margin: 1.4rem 0;
+    max-width: 68ch;
+  }
+
+  .callout b { color: var(--ink); }
+
+  /* ---------- Code block ---------- */
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 1rem 1.2rem;
+    border-radius: 10px;
+    overflow-x: auto;
+    line-height: 1.6;
+    margin: 1.25rem 0;
+  }
+
+  /* ---------- Footer ---------- */
+
+  .colophon {
+    margin-top: 4rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div>
+      <div class="masthead-kicker">Engineering handbook</div>
+      <h1>AbhiTrip</h1>
+      <p class="masthead-sub">What it is, how it's built, what it depends on, and why it's built the way it is — written to hand to someone cold.</p>
+    </div>
+    <div class="masthead-meta">
+      <div><strong>Owner</strong> — abhilj</div>
+      <div><strong>Stack</strong> — React 18 · Vite 7 · Vercel</div>
+      <div><strong>Status</strong> — private, single-user hobby app</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Table of contents">
+      <span class="toc-label">Contents</span>
+      <ol>
+        <li><a href="#overview"><span class="n">01</span> Overview</a></li>
+        <li><a href="#architecture"><span class="n">02</span> Architecture</a></li>
+        <li><a href="#stack"><span class="n">03</span> Tech stack</a></li>
+        <li><a href="#services"><span class="n">04</span> External services</a></li>
+        <li><a href="#config"><span class="n">05</span> Configuration</a></li>
+        <li><a href="#data"><span class="n">06</span> Data &amp; storage</a></li>
+        <li><a href="#decisions"><span class="n">07</span> Key decisions</a></li>
+        <li><a href="#limits"><span class="n">08</span> Limitations</a></li>
+        <li><a href="#ops"><span class="n">09</span> Deployment</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <section class="chapter" id="overview">
+        <div class="chapter-head"><span class="chapter-num">01</span><h2>Overview</h2></div>
+        <p class="lede">AbhiTrip turns five form fields into a full trip dossier. Enter a destination, a budget, a headcount, and how many days you've got — the AI fills in everything else.</p>
+
+        <div class="prose">
+          <p>It's a single-user, password-gated hobby app: one person's trip planner, not a multi-tenant product. There's no sign-up, no billing, no account system — just a shared password and a form.</p>
+          <p>A generated trip includes:</p>
+        </div>
+
+        <div class="feature-grid">
+          <div class="feature-card"><h4><span class="dot"></span>Itinerary</h4><p>Day-by-day plan with morning/afternoon/evening activities, editable inline and regeneratable one day at a time.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>Budget breakdown</h4><p>Flights, accommodation, food, transport, and activities as line items, with a per-person toggle.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>Attractions + map</h4><p>5–8 real places with photos (Unsplash) and pins on an OpenStreetMap view.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>Weather</h4><p>Historical monthly averages plus a real 7-day forecast layered on top for near-term trips.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>Currency &amp; exchange</h4><p>Local currency info with a live FX rate substituted in over the model's guess.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>Beware of</h4><p>Destination-specific scams, safety notes, and cultural pitfalls.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>Food, shopping &amp; packing</h4><p>Local dishes with per-meal cost estimates, souvenirs, and a climate-appropriate packing list.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>Trip chat</h4><p>A floating Q&amp;A widget grounded in that specific trip's content — ask it anything about the plan.</p></div>
+          <div class="feature-card"><h4><span class="dot"></span>PDF export &amp; sharing</h4><p>Server-rendered PDF download, and a shareable read-only link that bypasses the password gate.</p></div>
+        </div>
+      </section>
+
+      <section class="chapter" id="architecture">
+        <div class="chapter-head"><span class="chapter-num">02</span><h2>Architecture</h2></div>
+        <p class="lede">A React SPA talking to a handful of Vercel serverless functions, plus several external APIs it calls straight from the browser. Which path a call takes depends on one thing: whether a secret needs to stay hidden.</p>
+
+        <figure class="diagram">
+          <svg viewBox="0 0 920 400" role="img" aria-label="Two request paths: browser calls proxied through Vercel functions to Gemini and Upstash to keep API keys secret, versus direct browser calls to Unsplash, Nominatim, Open-Meteo and Frankfurter which need no secret and allow CORS.">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+              </marker>
+            </defs>
+
+            <!-- Browser box -->
+            <rect x="20" y="150" width="150" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.3" />
+            <text x="95" y="188" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Browser</text>
+            <text x="95" y="207" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">React SPA</text>
+
+            <!-- Top path: Vercel functions -->
+            <rect x="290" y="40" width="190" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.3" />
+            <text x="385" y="72" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Vercel functions</text>
+            <text x="385" y="90" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">api/gemini · api/share</text>
+            <text x="385" y="105" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">api/pdf</text>
+
+            <rect x="620" y="10" width="150" height="55" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.5" />
+            <text x="695" y="43" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--accent)">Gemini API</text>
+
+            <rect x="620" y="95" width="150" height="55" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.5" />
+            <text x="695" y="128" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--accent)">Upstash Redis</text>
+
+            <line x1="170" y1="175" x2="288" y2="110" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)" />
+            <text x="228" y="128" text-anchor="middle" font-size="10.5" fill="currentColor">key stays server-side</text>
+
+            <line x1="480" y1="70" x2="618" y2="38" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)" />
+            <text x="549" y="45" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">generateContent</text>
+
+            <line x1="480" y1="105" x2="618" y2="122" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)" />
+            <text x="549" y="132" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">read / write trip</text>
+
+            <!-- Bottom path: direct calls -->
+            <rect x="290" y="270" width="190" height="110" rx="8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" />
+            <text x="385" y="295" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Direct from browser</text>
+            <text x="385" y="315" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">Unsplash · Nominatim</text>
+            <text x="385" y="331" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">Open-Meteo · Frankfurter</text>
+            <text x="385" y="352" text-anchor="middle" font-size="10" fill="var(--warm)">no secret to hide, CORS allowed</text>
+
+            <line x1="170" y1="215" x2="288" y2="300" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)" />
+            <text x="212" y="270" text-anchor="middle" font-size="10.5" fill="currentColor">fetch() straight to the API</text>
+          </svg>
+          <figcaption>The split that decides which path a call takes: <b>Gemini</b> needs a secret key kept off the client and blocks cross-origin requests anyway, and <b>Upstash</b>'s REST token is likewise server-only — both route through a Vercel function. <b>Unsplash</b>'s key is already client-visible by design, and <b>Nominatim</b>, <b>Open-Meteo</b>, and <b>Frankfurter</b> are keyless and CORS-open, so the browser calls them directly.</figcaption>
+        </figure>
+
+        <h3>The main generation request</h3>
+        <div class="prose">
+          <p>Submitting the trip form runs a small pipeline, not one call: a cheap feasibility check on the budget (small model), then — if it passes — the main plan generation (large model), streamed token-by-token back to the browser so the loading screen shows live progress instead of a static spinner.</p>
+          <p>The response is constrained by a JSON <code>responseSchema</code>, not just a "please return JSON" instruction — Gemini validates the shape (required fields, types, array bounds, string length caps) server-side before it ever reaches the client. Structural validity is enforced this way; content quality is still down to prompt wording.</p>
+          <p>After the JSON comes back, two more enrichments run client-side: a live FX rate overwrites the model's currency guess (Frankfurter), and attraction photos are fetched (Unsplash) and merged in.</p>
+        </div>
+      </section>
+
+      <section class="chapter" id="stack">
+        <div class="chapter-head"><span class="chapter-num">03</span><h2>Tech stack</h2></div>
+        <p class="lede">No build step surprises, no framework beyond what's needed to ship a form and a results page.</p>
+
+        <h3>Frontend</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Package</th><th>Version</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td>react / react-dom</td><td>^18.2.0</td><td>UI runtime</td></tr>
+              <tr><td>vite</td><td>^7.0.0</td><td>Dev server &amp; production bundler</td></tr>
+              <tr><td>@google/genai</td><td>^2.18.0</td><td>Gemini SDK — used both client-side (types) and inside the Vercel functions</td></tr>
+              <tr><td>@react-pdf/renderer</td><td>^4.9.0</td><td>Server-side PDF generation from trip data (not a DOM screenshot)</td></tr>
+              <tr><td>leaflet / react-leaflet</td><td>^1.9.4 / ^4.2.1</td><td>The attractions map</td></tr>
+              <tr><td>@upstash/redis</td><td>^1.38.3</td><td>REST client for the share-link store</td></tr>
+              <tr><td>uuid</td><td>^9.0.0</td><td>Trip IDs</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Where the code lives</h3>
+        <div class="prose">
+          <ul>
+            <li><code>src/components/</code> — one file per section of the result page (Itinerary, Weather, BewareOf, TripChat, …)</li>
+            <li><code>src/utils/</code> — everything with no JSX: the Gemini client wrapper, prompt building, schemas, geocoding, FX, weather, sharing, local storage</li>
+            <li><code>src/pdf/TripPdfDocument.js</code> — the PDF's layout, built from <code>React.createElement</code> directly (no JSX, since it renders through <code>@react-pdf/renderer</code>, not the DOM)</li>
+            <li><code>api/</code> — three Vercel serverless functions: <code>gemini.js</code>, <code>pdf.js</code>, <code>share.js</code></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="chapter" id="services">
+        <div class="chapter-head"><span class="chapter-num">04</span><h2>External services</h2></div>
+        <p class="lede">Six third-party services, chosen deliberately to keep this running on free tiers.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Service</th><th>Used for</th><th>Access</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Google Gemini</td><td>All AI generation — trip plan, section regeneration, budget checks, trip chat</td><td><span class="pill pill-server">Server-side key</span></td><td>Free tier only. Daily request quota is tight and model availability has shifted more than once — see §08.</td></tr>
+              <tr><td>Unsplash</td><td>Destination hero image and per-attraction photos</td><td><span class="pill pill-free">Client key</span></td><td>Key is <code>VITE_</code>-prefixed (bundled, not secret by design). Missing key degrades to no photos, not an error.</td></tr>
+              <tr><td>OpenStreetMap Nominatim</td><td>Destination autocomplete, attraction &amp; destination geocoding for the map and weather lookup</td><td><span class="pill pill-free">No key</span></td><td>Public usage policy caps free use around 1 request/second — attraction geocoding runs sequentially with a delay to respect it.</td></tr>
+              <tr><td>Open-Meteo</td><td>Live 7-day weather forecast</td><td><span class="pill pill-free">No key</span></td><td>Free for non-commercial use, no signup.</td></tr>
+              <tr><td>Frankfurter</td><td>Live currency exchange rate, substituted over the AI's guess</td><td><span class="pill pill-free">No key</span></td><td>Covers roughly 30 major currencies — silently falls back to the AI's estimate if the pair isn't supported.</td></tr>
+              <tr><td>Upstash Redis</td><td>Storing shared trip links</td><td><span class="pill pill-server">Server-side token</span></td><td>Free tier: 256MB storage, 500K commands/month. Shares expire after 90 days.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="chapter" id="config">
+        <div class="chapter-head"><span class="chapter-num">05</span><h2>Configuration</h2></div>
+        <p class="lede">Five environment variables, set in Vercel's project settings. None of them live in the repo.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Variable</th><th>Scope</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>GEMINI_API_KEY</td><td><span class="pill pill-server">Server</span></td><td>Read only inside the Vercel functions — never bundled into client JS, which is what actually fixes the old key-exposure risk from the previous (Groq-based) version.</td></tr>
+              <tr><td>UPSTASH_REDIS_REST_URL</td><td><span class="pill pill-server">Server</span></td><td>Upstash REST endpoint for the share store.</td></tr>
+              <tr><td>UPSTASH_REDIS_REST_TOKEN</td><td><span class="pill pill-server">Server</span></td><td>Upstash REST auth token.</td></tr>
+              <tr><td>VITE_APP_PASSWORD</td><td><span class="pill pill-caution">Client-bundled</span></td><td>The password gate. Visible in the built JS to anyone who looks — a light deterrent, not real access control.</td></tr>
+              <tr><td>VITE_UNSPLASH_ACCESS_KEY</td><td><span class="pill pill-caution">Client-bundled</span></td><td>Unsplash's own model is a client-exposed key by design — this is expected, not an oversight.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout"><b>Changing any of these</b> requires a redeploy — Vite bakes <code>VITE_</code>-prefixed values into the build at compile time, so saving a new value in Vercel's dashboard alone doesn't touch the already-built, already-live JS.</div>
+      </section>
+
+      <section class="chapter" id="data">
+        <div class="chapter-head"><span class="chapter-num">06</span><h2>Data &amp; storage</h2></div>
+        <p class="lede">There's no database. State lives in two places, and neither is durable in a way that matters for this kind of app.</p>
+
+        <h3>Browser localStorage</h3>
+        <div class="prose">
+          <ul>
+            <li><b>Current trip</b> — the last generated trip, restored on reload so refreshing the page doesn't lose it.</li>
+            <li><b>Trip history</b> — every generated trip, so past plans can be revisited.</li>
+            <li><b>Daily request count</b> — how many calls have gone out to each Gemini model today, reset at midnight, backing the "trips left today" estimate. It tracks <i>requests</i>, not tokens — the free tier's actual limit is a request count, and a token-based estimate here previously showed a wildly wrong number.</li>
+          </ul>
+        </div>
+
+        <h3>Upstash Redis</h3>
+        <div class="prose">
+          <p>The only server-side persistence. A shared trip is the full trip JSON stored under a random 10-character key with a 90-day TTL — nothing more structured than that, since the only operations needed are "store one trip" and "fetch one trip by id."</p>
+        </div>
+      </section>
+
+      <section class="chapter" id="decisions">
+        <div class="chapter-head"><span class="chapter-num">07</span><h2>Key decisions</h2></div>
+        <p class="lede">The parts of the design that aren't obvious from reading the code — why it works this way, not just that it does.</p>
+
+        <div class="decision">
+          <div class="decision-title">Schema-enforced JSON, not "please return JSON"</div>
+          <div class="decision-why"><b>Why:</b> loose JSON-mode output truncated or came back malformed often enough to be a real problem. A Gemini <code>responseSchema</code> validates shape server-side — required fields, types, array/string length bounds — so the model can no longer return something structurally wrong, only content that's inaccurate.</div>
+        </div>
+        <div class="decision">
+          <div class="decision-title">Streaming generation with three layered failure guards</div>
+          <div class="decision-why"><b>Why:</b> the main plan generation takes long enough that a static spinner felt broken, so it streams. That streaming pipe also turned out to be the fix for a nastier problem: Gemini would occasionally get stuck in a decoding loop, ballooning one field to tens of thousands of repeated characters. Three checks now run on every chunk — an exact-repetition detector, a hard cap on how long any single JSON string is allowed to get, and a check that the model actually signaled a clean finish rather than just going silent. Any of the three aborts and retries automatically, almost always invisibly to the user.</div>
+        </div>
+        <div class="decision">
+          <div class="decision-title">Native PDF generation, not a DOM screenshot</div>
+          <div class="decision-why"><b>Why:</b> the original approach (html2canvas + jsPDF) broke in four different ways across one session — a page-size cap that silently corrupted pagination, a horizontally-scrolling section getting clipped out, a CSS animation replaying mid-capture and washing out the colors, and page breaks landing mid-card. It was rewritten from scratch: a server-side <code>@react-pdf/renderer</code> document built from the trip's actual data, not a picture of whatever happened to be on screen.</div>
+        </div>
+        <div class="decision">
+          <div class="decision-title">The main model has moved twice</div>
+          <div class="decision-why"><b>Why:</b> it started on a preview-tier model with an unusually tight 20-requests/day quota and a decoding-instability streak that didn't clear up with prompt or temperature tuning. The next model tried turned out to already be deprecated for new API keys — Google's own error named its replacement directly, which is what's running now. The model name is expected to need revisiting again if either problem resurfaces; it isn't treated as a settled choice.</div>
+        </div>
+        <div class="decision">
+          <div class="decision-title">The trip chat uses the small model, deliberately</div>
+          <div class="decision-why"><b>Why:</b> conversational Q&amp;A doesn't need the large model's structured-output budget, and it draws from a separate daily quota pool — keeping chat traffic off the same tight allowance as full trip generation.</div>
+        </div>
+      </section>
+
+      <section class="chapter" id="limits">
+        <div class="chapter-head"><span class="chapter-num">08</span><h2>Limitations</h2></div>
+        <p class="lede">Worth knowing before explaining this to someone, so a rough edge doesn't read as a bug.</p>
+
+        <div class="prose">
+          <ul>
+            <li><b>The daily AI quota is genuinely tight.</b> The free tier caps requests per day per model, and a single "Generate" click can cost more than one request if a retry fires — the quota can run out mid-session on a busy day.</li>
+            <li><b>Gemini occasionally returns a 503 ("high demand").</b> This is transient and outside the app's control; it's retried automatically with backoff and surfaces a plain "try again shortly" message if all retries fail.</li>
+            <li><b>The password gate is a deterrent, not security.</b> It's a client-bundled value, visible to anyone who inspects the built JS. Fine for a private link shared with family; not a real access-control boundary.</li>
+            <li><b>Weather comes in two flavors that don't always agree.</b> The monthly grid is historical averages; the live strip above it is today's actual forecast. They can legitimately disagree on any given week — that's expected, not a data error.</li>
+            <li><b>No real flight pricing exists as a free option.</b> Every previously-free flight-fare API (Amadeus's self-service tier, Kiwi's Tequila API) has closed off free access; flight estimates remain an LLM guess rather than a live fare lookup.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="chapter" id="ops">
+        <div class="chapter-head"><span class="chapter-num">09</span><h2>Deployment</h2></div>
+        <p class="lede">Vercel, connected directly to the GitHub repo. There's no separate staging environment.</p>
+
+        <div class="prose">
+          <p>Every push to <code>main</code> triggers a fresh build and deploy automatically. <code>api/*.js</code> files are picked up as Vercel Functions with no separate server process to manage — each one exports a Web-standard <code>fetch(request)</code> handler.</p>
+        </div>
+
+        <pre>git push origin main
+&gt; Vercel detects the push, builds (`vite build`), deploys
+&gt; api/gemini.js, api/pdf.js, api/share.js become live serverless functions
+&gt; static assets (the built SPA) are served from Vercel's edge</pre>
+
+        <div class="callout"><b>Local development</b> only runs the frontend (<code>vite dev</code>) — the <code>api/</code> functions don't execute under plain Vite, so anything touching Gemini, PDF export, or sharing can only be fully tested against the real deployment.</div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="colophon">
+    <span>AbhiTrip — private hobby project</span>
+    <span>Handbook last generated 2026-09-02</span>
+  </div>
+
+</div>
+</body>
+</html>

@@ -94,5 +94,6 @@ environment.
   link, not an access-control boundary.
 
 For a more detailed walkthrough of the architecture and the reasoning
-behind specific engineering decisions, see the project handbook (ask
-whoever maintains this repo for the current link).
+behind specific engineering decisions, see
+[`docs/handbook.html`](docs/handbook.html) — open it directly in a
+browser, no build step needed.
