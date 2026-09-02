@@ -82,12 +82,12 @@ function sleep(ms) {
 }
 
 /**
- * Looks up a single attraction's coordinates via Nominatim free-text search.
- * Returns null (never throws) on no match or any failure — a missing pin
- * shouldn't break the map for the rest of the trip.
+ * Looks up a single free-text query's coordinates via Nominatim. Returns
+ * null (never throws) on no match or any failure — shared by attraction
+ * pins (a missing pin shouldn't break the map) and destination-level
+ * lookups (e.g. for a live weather forecast).
  */
-async function geocodeAttraction(name, destination) {
-  const query = `${name}, ${destination}`;
+async function geocodeQuery(query) {
   try {
     const res = await fetch(
       `${BASE_URL}?q=${encodeURIComponent(query)}&format=jsonv2&limit=1`,
@@ -106,6 +106,21 @@ async function geocodeAttraction(name, destination) {
     logger.debug(`Geocoding failed for "${query}":`, err);
     return null;
   }
+}
+
+function geocodeAttraction(name, destination) {
+  return geocodeQuery(`${name}, ${destination}`);
+}
+
+/**
+ * Looks up a destination's coordinates (city/country level) — used to
+ * fetch a live weather forecast for the destination, separate from the
+ * per-attraction pins used for the map.
+ * @param {string} destination
+ * @returns {Promise<{lat: number, lng: number} | null>}
+ */
+export function geocodeDestination(destination) {
+  return geocodeQuery(destination);
 }
 
 /**

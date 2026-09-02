@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import RegenerateButton from "./RegenerateButton";
+import { getLiveForecast } from "../utils/weatherForecast";
+import logger from "../utils/logger";
 
 const RATING_LABELS = {
   best: "Best",
@@ -7,7 +10,32 @@ const RATING_LABELS = {
   avoid: "Avoid",
 };
 
-export default function Weather({ weather, onRegenerate, regenerating }) {
+const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+
+export default function Weather({ weather, destination, onRegenerate, regenerating }) {
+  const [forecast, setForecast] = useState(null);
+
+  useEffect(() => {
+    if (!destination) {
+      setForecast(null);
+      return;
+    }
+
+    let cancelled = false;
+    getLiveForecast(destination)
+      .then((result) => {
+        if (!cancelled) setForecast(result);
+      })
+      .catch((err) => {
+        logger.debug("Live forecast fetch failed:", err);
+        if (!cancelled) setForecast(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [destination]);
+
   if (!weather?.months?.length) return null;
 
   const { months, bestMonthsSummary, avoidMonthsSummary } = weather;
@@ -38,6 +66,28 @@ export default function Weather({ weather, onRegenerate, regenerating }) {
           </div>
         )}
       </div>
+
+      {forecast?.length > 0 && (
+        <div className="weather-live-forecast">
+          <span className="weather-summary-label">Live forecast (next {forecast.length} days)</span>
+          <div className="weather-live-strip">
+            {forecast.map((d) => (
+              <div key={d.date} className="weather-live-day">
+                <span className="weather-live-day-label">
+                  {DAY_LABEL_FORMATTER.format(new Date(d.date))}
+                </span>
+                <span className="weather-live-temps">
+                  {d.maxC}° / {d.minC}°
+                </span>
+                <span className="weather-live-condition">{d.condition}</span>
+                {d.precipProbability != null && (
+                  <span className="weather-live-precip">{d.precipProbability}% rain</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="weather-grid">
         {months.map((m) => (

@@ -180,6 +180,7 @@ export default function TripResult({
         <AttractionsMap attractions={attractions} destination={input?.destination} />
         <Weather
           weather={weather}
+          destination={input?.destination}
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("weather")}
           regenerating={regeneratingKey === "weather"}
         />
@@ -216,7 +217,7 @@ export default function TripResult({
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("packingList")}
           regenerating={regeneratingKey === "packingList"}
         />
-        <TripPlanner planner={planner} currency={input?.currency} />
+        <TripPlanner planner={planner} currency={input?.currency} pax={input?.pax} />
       </div>
 
       <TripChat trip={trip} />

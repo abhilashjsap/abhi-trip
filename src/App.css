@@ -759,6 +759,30 @@ button:disabled {
 
 /* ---------- Trip Planner / Budget ---------- */
 
+.budget-per-person-toggle {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.budget-per-person-toggle button {
+  border: none;
+  background: #fff;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+.budget-per-person-toggle button.active {
+  background: var(--navy);
+  color: var(--paper);
+}
+
 .budget-bars {
   display: flex;
   flex-direction: column;
@@ -1625,6 +1649,58 @@ button:disabled {
   color: var(--ink-soft);
   line-height: 1.5;
   margin: 0;
+}
+
+.weather-live-forecast {
+  margin-bottom: 1.75rem;
+}
+
+.weather-live-strip {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  margin-top: 0.5rem;
+  padding-bottom: 0.2rem;
+}
+
+.weather-live-day {
+  flex: 0 0 auto;
+  min-width: 84px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.weather-live-day-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.weather-live-temps {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.weather-live-condition {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.weather-live-precip {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--sage);
 }
 
 .weather-grid {

@@ -1,14 +1,43 @@
-export default function TripPlanner({ planner, currency }) {
+import { useState } from "react";
+
+export default function TripPlanner({ planner, currency, pax }) {
+  const [perPerson, setPerPerson] = useState(false);
+
   if (!planner) return null;
 
   const { budgetBreakdown = [], tips = [], totalEstimate } = planner;
   const rows = budgetBreakdown.filter((row) => row.amount > 0);
+  const showToggle = pax > 1;
+  const divisor = showToggle && perPerson ? pax : 1;
+
+  const formatAmount = (amount) =>
+    `${currency} ${Math.round(amount / divisor).toLocaleString()}`;
 
   return (
     <section className="trip-planner">
-      <div className="section-heading">
-        <span className="section-eyebrow">The numbers</span>
-        <h2>Budget breakdown</h2>
+      <div className="section-heading section-heading-with-action">
+        <div>
+          <span className="section-eyebrow">The numbers</span>
+          <h2>Budget breakdown</h2>
+        </div>
+        {showToggle && (
+          <div className="budget-per-person-toggle" role="group" aria-label="Show costs as">
+            <button
+              type="button"
+              className={!perPerson ? "active" : ""}
+              onClick={() => setPerPerson(false)}
+            >
+              Total
+            </button>
+            <button
+              type="button"
+              className={perPerson ? "active" : ""}
+              onClick={() => setPerPerson(true)}
+            >
+              Per person
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="budget-bars">
@@ -16,9 +45,7 @@ export default function TripPlanner({ planner, currency }) {
           <div key={row.category} className="budget-bar-row">
             <div className="budget-bar-label">
               <span>{row.category}</span>
-              <span className="budget-bar-amount">
-                {currency} {row.amount.toLocaleString()}
-              </span>
+              <span className="budget-bar-amount">{formatAmount(row.amount)}</span>
             </div>
             <div className="budget-bar-track">
               <div
@@ -32,10 +59,8 @@ export default function TripPlanner({ planner, currency }) {
 
       {totalEstimate != null && (
         <div className="budget-total">
-          <span>Total estimate</span>
-          <span className="budget-total-amount">
-            {currency} {totalEstimate.toLocaleString()}
-          </span>
+          <span>{perPerson && showToggle ? "Total estimate (per person)" : "Total estimate"}</span>
+          <span className="budget-total-amount">{formatAmount(totalEstimate)}</span>
         </div>
       )}
 
