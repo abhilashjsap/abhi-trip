@@ -12,6 +12,7 @@ import {
   shoppingItemSchema,
   packingListSchema,
   itineraryDaySchema,
+  bewareOfItemSchema,
 } from "./tripSchemas";
 import logger from "./logger";
 
@@ -433,7 +434,10 @@ Respond ONLY with a JSON object in this exact shape:
     "airportExchangeWarning": "1-2 sentences on whether departure/arrival airport currency exchange counters are notably costly here, or null if not a particular concern",
     "betterExchangeOptions": ["option1 (e.g. local banks, ATMs on arrival, licensed exchange chains in the city)", "option2"],
     "cardTips": "1-2 sentences on debit/credit card acceptance and foreign transaction fees to watch for"
-  }
+  },
+  "bewareOf": [
+    { "title": "Short name of the scam/hazard/pitfall", "description": "1-2 sentences on what it is and how to avoid it, specific to ${destination}" }
+  ]
 }
 
 Rules:
@@ -453,6 +457,7 @@ Rules:
 - currencyInfo.isForeign should be false only if ${destination}'s local currency IS ${currency} (e.g. destination and currency are the same country/region). If false, you may omit the other currencyInfo fields or set them to null.
 - oneUnitOfInputCurrencyInLocal must be a plain number: how many units of the local currency you get for 1 unit of ${currency} (e.g. if 1 INR = 18 MYR-equivalent-in-cents... just give the direct numeric rate, however small or large).
 - If isForeign is true, give a genuinely useful, destination-specific exchange recommendation — not generic advice. Be honest if card usage is fine and cash isn't really needed.
+- bewareOf should list 3-5 real, specific things travelers should watch out for in ${destination} — common scams, safety concerns, cultural faux pas, or practical pitfalls (overcharging, fake tour operators, pickpocketing hotspots, unsafe tap water, aggressive touts, etc.). Be specific and honest about ${destination} — if it's genuinely very safe with few notable scams, say so plainly in one item rather than inventing generic ones that don't really apply.
 - Every text field must contain real, specific content about ${destination} — never placeholder or filler text (e.g. never write literal text like "reason text" or "description here"). If a field genuinely doesn't apply, use null instead of a placeholder.
 - Keep JSON valid — no trailing commas, no comments.
 `.trim();
@@ -626,13 +631,19 @@ Suggest 4-6 real local products/crafts/souvenirs genuinely associated with ${for
 Build a packing list (clothing, documents, electronics, toiletries, misc) tailored to ${formData.destination}'s typical climate and a ${formData.days}-day trip.
 `.trim(),
   },
+  bewareOf: {
+    schema: { type: "ARRAY", items: bewareOfItemSchema, minItems: "3", maxItems: "6" },
+    buildPrompt: (trip, formData) => `
+List 3-5 real, specific things travelers should watch out for in ${formData.destination} — common scams, safety concerns, cultural faux pas, or practical pitfalls. Be specific and honest — if ${formData.destination} is genuinely very safe with few notable scams, say so plainly in one item rather than inventing generic ones that don't really apply.
+`.trim(),
+  },
 };
 
 /**
  * Regenerates one section of an existing trip plan (attractions, weather,
- * food, shopping, or packingList) without touching the rest of the plan.
- * Returns just the new section value — the caller merges it into trip
- * state and re-caches.
+ * food, shopping, packingList, or bewareOf) without touching the rest of
+ * the plan. Returns just the new section value — the caller merges it into
+ * trip state and re-caches.
  */
 export async function regenerateSection(sectionKey, trip, formData) {
   const config = SECTION_REGENERATORS[sectionKey];

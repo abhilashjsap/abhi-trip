@@ -176,6 +176,15 @@ export const shoppingItemSchema = {
   required: ["item", "description", "whereToBuy", "priceRange"],
 };
 
+export const bewareOfItemSchema = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING", maxLength: "60" },
+    description: { type: "STRING", maxLength: "300" },
+  },
+  required: ["title", "description"],
+};
+
 export const currencyInfoSchema = {
   type: "OBJECT",
   properties: {
@@ -274,6 +283,7 @@ export const TRIP_PLAN_SCHEMA = {
     food: foodSchema,
     shopping: { type: "ARRAY", items: shoppingItemSchema },
     currencyInfo: currencyInfoSchema,
+    bewareOf: { type: "ARRAY", items: bewareOfItemSchema, minItems: "3", maxItems: "6" },
   },
   required: [
     "weather",
@@ -284,5 +294,6 @@ export const TRIP_PLAN_SCHEMA = {
     "food",
     "shopping",
     "currencyInfo",
+    "bewareOf",
   ],
 };
