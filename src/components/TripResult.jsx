@@ -9,6 +9,7 @@ import Shopping from "./Shopping";
 import CurrencyInfo from "./CurrencyInfo";
 import Weather from "./Weather";
 import BewareOf from "./BewareOf";
+import EmergencyInfo from "./EmergencyInfo";
 import AttractionsMap from "./AttractionsMap";
 import TripStub from "./TripStub";
 import TripChat from "./TripChat";
@@ -42,7 +43,7 @@ export default function TripResult({
 
   if (!trip) return null;
 
-  const { input, itinerary, packingList, planner, attractions, heroImage, flights, food, shopping, currencyInfo, weather, bewareOf } = trip;
+  const { input, itinerary, packingList, planner, attractions, heroImage, flights, food, shopping, currencyInfo, weather, bewareOf, emergencyInfo } = trip;
 
   const handleSavePdf = async () => {
     setExporting(true);
@@ -201,6 +202,11 @@ export default function TripResult({
           bewareOf={bewareOf}
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("bewareOf")}
           regenerating={regeneratingKey === "bewareOf"}
+        />
+        <EmergencyInfo
+          emergencyInfo={emergencyInfo}
+          onRegenerate={readOnly ? undefined : () => handleRegenerateSection("emergencyInfo")}
+          regenerating={regeneratingKey === "emergencyInfo"}
         />
         <FoodAndDrink
           food={food}

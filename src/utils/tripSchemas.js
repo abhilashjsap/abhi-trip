@@ -185,6 +185,15 @@ export const bewareOfItemSchema = {
   required: ["title", "description"],
 };
 
+export const emergencyInfoSchema = {
+  type: "OBJECT",
+  properties: {
+    generalEmergencyNumber: { type: "STRING", maxLength: "60" },
+    embassyNote: { type: "STRING", maxLength: "400" },
+  },
+  required: ["generalEmergencyNumber", "embassyNote"],
+};
+
 const currencyInfoSchema = {
   type: "OBJECT",
   properties: {
@@ -284,6 +293,7 @@ export const TRIP_PLAN_SCHEMA = {
     shopping: { type: "ARRAY", items: shoppingItemSchema },
     currencyInfo: currencyInfoSchema,
     bewareOf: { type: "ARRAY", items: bewareOfItemSchema, minItems: "3", maxItems: "6" },
+    emergencyInfo: emergencyInfoSchema,
   },
   required: [
     "weather",
@@ -295,5 +305,6 @@ export const TRIP_PLAN_SCHEMA = {
     "shopping",
     "currencyInfo",
     "bewareOf",
+    "emergencyInfo",
   ],
 };

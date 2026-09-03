@@ -403,6 +403,18 @@ function BewareOfSection(bewareOf) {
   );
 }
 
+function EmergencyInfoSection(emergencyInfo) {
+  if (!emergencyInfo?.generalEmergencyNumber) return null;
+  return Section("emergencyInfo", "Just in case", "Emergency info", [
+    h(Text, { key: "num", style: [styles.bodyText, { marginBottom: 4 }] }, [
+      h(Text, { key: "n", style: { fontFamily: "Helvetica-Bold" } }, "Emergency number: "),
+      emergencyInfo.generalEmergencyNumber,
+    ]),
+    emergencyInfo.embassyNote &&
+      h(Text, { key: "embassy", style: styles.mutedText }, emergencyInfo.embassyNote),
+  ]);
+}
+
 function FoodSection(food) {
   if (!food) return null;
   return Section("food", "Eat & drink", "Local food to try", [
@@ -499,6 +511,7 @@ export default function TripPdfDocument({ trip }) {
     shopping,
     currencyInfo,
     bewareOf,
+    emergencyInfo,
   } = trip;
 
   const currency = input?.currency;
@@ -554,6 +567,7 @@ export default function TripPdfDocument({ trip }) {
       FlightsSection(flights, currency),
       CurrencySection(currencyInfo, currency),
       BewareOfSection(bewareOf),
+      EmergencyInfoSection(emergencyInfo),
       FoodSection(food),
       ShoppingSection(shopping),
       PackingListSection(packingList),

@@ -13,6 +13,7 @@ import {
   packingListSchema,
   itineraryDaySchema,
   bewareOfItemSchema,
+  emergencyInfoSchema,
 } from "./tripSchemas";
 import logger from "./logger";
 
@@ -437,7 +438,11 @@ Respond ONLY with a JSON object in this exact shape:
   },
   "bewareOf": [
     { "title": "Short name of the scam/hazard/pitfall", "description": "1-2 sentences on what it is and how to avoid it, specific to ${destination}" }
-  ]
+  ],
+  "emergencyInfo": {
+    "generalEmergencyNumber": "the real emergency number(s) used in ${destination}",
+    "embassyNote": "1-2 sentences on how a traveler from ${departureCity} can find/contact their home country's embassy or consulate in ${destination} if needed"
+  }
 }
 
 Rules:
@@ -461,6 +466,8 @@ Rules:
 - oneUnitOfInputCurrencyInLocal must be a plain number: how many units of the local currency you get for 1 unit of ${currency} (e.g. if 1 INR = 18 MYR-equivalent-in-cents... just give the direct numeric rate, however small or large).
 - If isForeign is true, give a genuinely useful, destination-specific exchange recommendation — not generic advice. Be honest if card usage is fine and cash isn't really needed.
 - bewareOf should list 3-5 real, specific things travelers should watch out for in ${destination} — common scams, safety concerns, cultural faux pas, or practical pitfalls (overcharging, fake tour operators, pickpocketing hotspots, unsafe tap water, aggressive touts, etc.). Be specific and honest about ${destination} — if it's genuinely very safe with few notable scams, say so plainly in one item rather than inventing generic ones that don't really apply.
+- emergencyInfo.generalEmergencyNumber must be the actual real emergency contact number(s) used in ${destination} (e.g. a single unified number like "112" or "999", or split numbers like "100 Police / 101 Fire / 102 Ambulance" if the country uses separate ones) — never invent a plausible-looking number.
+- emergencyInfo.embassyNote should be practical, specific guidance for a traveler from ${departureCity} on finding/contacting their home country's embassy or consulate in ${destination} — not generic "contact your embassy" filler.
 - Every text field must contain real, specific content about ${destination} — never placeholder or filler text (e.g. never write literal text like "reason text" or "description here"). If a field genuinely doesn't apply, use null instead of a placeholder.
 - Keep JSON valid — no trailing commas, no comments.
 `.trim();
@@ -640,13 +647,19 @@ Build a packing list (clothing, documents, electronics, toiletries, misc) tailor
 List 3-5 real, specific things travelers should watch out for in ${formData.destination} — common scams, safety concerns, cultural faux pas, or practical pitfalls. Be specific and honest — if ${formData.destination} is genuinely very safe with few notable scams, say so plainly in one item rather than inventing generic ones that don't really apply.
 `.trim(),
   },
+  emergencyInfo: {
+    schema: emergencyInfoSchema,
+    buildPrompt: (trip, formData) => `
+Give the real emergency contact number(s) used in ${formData.destination} (e.g. a single unified number like "112", or split numbers like "100 Police / 101 Fire / 102 Ambulance" if the country uses separate ones — never invent a plausible-looking number), and 1-2 sentences of practical guidance for a traveler from ${formData.departureCity} on finding/contacting their home country's embassy or consulate in ${formData.destination}.
+`.trim(),
+  },
 };
 
 /**
  * Regenerates one section of an existing trip plan (attractions, weather,
- * food, shopping, packingList, or bewareOf) without touching the rest of
- * the plan. Returns just the new section value — the caller merges it into
- * trip state and re-caches.
+ * food, shopping, packingList, bewareOf, or emergencyInfo) without touching
+ * the rest of the plan. Returns just the new section value — the caller
+ * merges it into trip state and re-caches.
  */
 export async function regenerateSection(sectionKey, trip, formData) {
   const config = SECTION_REGENERATORS[sectionKey];
