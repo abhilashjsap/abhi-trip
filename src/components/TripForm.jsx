@@ -17,6 +17,7 @@ const TRIP_TYPES = [
 const initialState = {
   destination: "",
   departureCity: "",
+  departureDate: "",
   budget: "",
   currency: "INR",
   pax: 1,
@@ -176,6 +177,21 @@ export default function TripForm({ onSubmit, loading }) {
             disabled={loading}
           />
         </div>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="departureDate">Departure date (optional)</label>
+        <input
+          id="departureDate"
+          type="date"
+          min={new Date().toISOString().slice(0, 10)}
+          value={form.departureDate}
+          onChange={handleChange("departureDate")}
+          disabled={loading}
+        />
+        <span className="field-hint">
+          Helps line up the weather forecast with your actual trip dates.
+        </span>
       </div>
 
       <div className="form-group checkbox-group">

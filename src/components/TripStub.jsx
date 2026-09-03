@@ -1,7 +1,25 @@
+function formatDeparture(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const departUtc = Date.UTC(y, m - 1, d);
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const daysUntil = Math.round((departUtc - todayUtc) / 86400000);
+
+  const dateLabel = new Date(departUtc).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+
+  if (daysUntil === 0) return `${dateLabel} · today`;
+  if (daysUntil === 1) return `${dateLabel} · tomorrow`;
+  if (daysUntil > 1) return `${dateLabel} · in ${daysUntil} days`;
+  return dateLabel;
+}
+
 export default function TripStub({ input, onReset }) {
   if (!input) return null;
 
-  const { destination, days, pax, budget, currency, flightsIncluded } = input;
+  const { destination, days, pax, budget, currency, flightsIncluded, departureDate } = input;
 
   return (
     <div className="trip-stub">
@@ -15,6 +33,12 @@ export default function TripStub({ input, onReset }) {
             <span className="stub-label">Duration</span>
             <span className="stub-value">{days}D</span>
           </div>
+          {departureDate && (
+            <div>
+              <span className="stub-label">Departs</span>
+              <span className="stub-value">{formatDeparture(departureDate)}</span>
+            </div>
+          )}
         </div>
 
         <div className="stub-row">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import RegenerateButton from "./RegenerateButton";
-import { getLiveForecast } from "../utils/weatherForecast";
+import { getLiveForecast, isWithinForecastHorizon } from "../utils/weatherForecast";
 import logger from "../utils/logger";
 
 const RATING_LABELS = {
@@ -12,7 +12,7 @@ const RATING_LABELS = {
 
 const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 
-export default function Weather({ weather, destination, onRegenerate, regenerating }) {
+export default function Weather({ weather, destination, departureDate, onRegenerate, regenerating }) {
   const [forecast, setForecast] = useState(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function Weather({ weather, destination, onRegenerate, regenerati
     }
 
     let cancelled = false;
-    getLiveForecast(destination)
+    getLiveForecast(destination, departureDate)
       .then((result) => {
         if (!cancelled) setForecast(result);
       })
@@ -34,11 +34,12 @@ export default function Weather({ weather, destination, onRegenerate, regenerati
     return () => {
       cancelled = true;
     };
-  }, [destination]);
+  }, [destination, departureDate]);
 
   if (!weather?.months?.length) return null;
 
   const { months, bestMonthsSummary, avoidMonthsSummary } = weather;
+  const forecastTooFarOut = !!departureDate && !isWithinForecastHorizon(departureDate);
 
   return (
     <section className="weather-section">
@@ -69,7 +70,9 @@ export default function Weather({ weather, destination, onRegenerate, regenerati
 
       {forecast?.length > 0 && (
         <div className="weather-live-forecast">
-          <span className="weather-summary-label">Live forecast (next {forecast.length} days)</span>
+          <span className="weather-summary-label">
+            {departureDate ? "Live forecast for your trip" : `Live forecast (next ${forecast.length} days)`}
+          </span>
           <div className="weather-live-strip">
             {forecast.map((d) => (
               <div key={d.date} className="weather-live-day">
@@ -87,6 +90,12 @@ export default function Weather({ weather, destination, onRegenerate, regenerati
             ))}
           </div>
         </div>
+      )}
+
+      {forecastTooFarOut && (
+        <p className="weather-forecast-pending">
+          A live forecast for your trip dates will show up here once you're within about two weeks of departure.
+        </p>
       )}
 
       <div className="weather-grid">

@@ -181,6 +181,7 @@ export default function TripResult({
         <Weather
           weather={weather}
           destination={input?.destination}
+          departureDate={input?.departureDate}
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("weather")}
           regenerating={regeneratingKey === "weather"}
         />

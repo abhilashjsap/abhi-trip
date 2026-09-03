@@ -1552,6 +1552,13 @@ button:disabled {
   margin-top: 0.35rem;
 }
 
+.field-hint {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--sage);
+  margin-top: 0.35rem;
+}
+
 /* ---------- Destination autocomplete ---------- */
 
 .autocomplete-wrap {
@@ -1837,6 +1844,12 @@ button:disabled {
   color: var(--sage);
   margin-top: 1.25rem;
   text-align: center;
+}
+
+.weather-forecast-pending {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 0 0 1.75rem;
 }
 
 /* ---------- Landing toolbar (usage + history) ---------- */
