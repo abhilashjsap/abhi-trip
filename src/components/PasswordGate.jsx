@@ -23,28 +23,26 @@ export default function PasswordGate({ onUnlock }) {
   };
 
   return (
-    <div className="app-container">
-      <div className="landing gate-landing">
-        <div className="landing-header">
-          <span className="brand-mark">AbhiTrip</span>
-          <h1>This trip planner is private.</h1>
-          <p>Enter the password to continue.</p>
-        </div>
-        <form onSubmit={handleSubmit} className="trip-form gate-form">
-          <div className="form-group">
-            <label htmlFor="gate-password">Password</label>
-            <input
-              id="gate-password"
-              type="password"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              autoFocus
-            />
-          </div>
-          {error && <p className="form-error">{error}</p>}
-          <button type="submit">Enter</button>
-        </form>
+    <div className="landing gate-landing">
+      <div className="landing-header">
+        <span className="brand-mark">AbhiTrip</span>
+        <h1>This trip planner is private.</h1>
+        <p>Enter the password to continue.</p>
       </div>
+      <form onSubmit={handleSubmit} className="trip-form gate-form">
+        <div className="form-group">
+          <label htmlFor="gate-password">Password</label>
+          <input
+            id="gate-password"
+            type="password"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            autoFocus
+          />
+        </div>
+        {error && <p className="form-error">{error}</p>}
+        <button type="submit">Enter</button>
+      </form>
     </div>
   );
 }

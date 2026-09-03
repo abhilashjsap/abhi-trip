@@ -1,20 +1,68 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
+  /* Brand accents — visually constant across both themes (rust/sage/navy
+     get a small brightening in the dark blocks below for contrast on a
+     dark background; hue is preserved, sand is untouched in both). */
   --navy: #1B2430;
   --navy-light: #2A3648;
   --sand: #E8DCC8;
-  --paper: #F7F4EE;
   --rust: #B8543A;
   --rust-light: #D06B4F;
   --sage: #7A8C7E;
+
+  /* Surface/text roles — these flip between light and dark. */
+  --bg: #F7F4EE;
+  --surface: #FFFFFF;
   --ink: #242018;
   --ink-soft: #5A5548;
+  --heading: #1B2430;
   --line: rgba(36, 32, 24, 0.1);
+
+  /* Fixed roles — text/borders sitting on a constant navy/rust/sand accent
+     surface. These must NOT flip with theme, since the accent surface
+     underneath them doesn't flip either. */
+  --cream: #F7F4EE;
+  --ink-fixed: #242018;
 
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+}
+
+/* System dark mode — only applies when the user hasn't made an explicit
+   choice via the toggle (no data-theme attribute set at all). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #17140F;
+    --surface: #221D16;
+    --ink: #EDE6D8;
+    --ink-soft: #B8AF9C;
+    --heading: #F5EEDF;
+    --line: rgba(247, 244, 238, 0.14);
+
+    --navy: #212C3B;
+    --navy-light: #34435A;
+    --rust: #D06B4F;
+    --rust-light: #E6896A;
+    --sage: #93A896;
+  }
+}
+
+/* Explicit dark mode — set by the toggle, wins over the OS preference. */
+:root[data-theme="dark"] {
+  --bg: #17140F;
+  --surface: #221D16;
+  --ink: #EDE6D8;
+  --ink-soft: #B8AF9C;
+  --heading: #F5EEDF;
+  --line: rgba(247, 244, 238, 0.14);
+
+  --navy: #212C3B;
+  --navy-light: #34435A;
+  --rust: #D06B4F;
+  --rust-light: #E6896A;
+  --sage: #93A896;
 }
 
 * {
@@ -28,7 +76,7 @@ html {
 body {
   margin: 0;
   font-family: var(--font-body);
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
@@ -92,7 +140,7 @@ button {
   font-weight: 600;
   margin: 0 0 0.75rem;
   line-height: 1.05;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .landing-header p {
@@ -105,7 +153,7 @@ button {
 /* ---------- Form ---------- */
 
 .trip-form {
-  background: #fff;
+  background: var(--surface);
   padding: 2.5rem;
   border-radius: 20px;
   box-shadow: 0 1px 2px rgba(36,32,24,0.04), 0 12px 32px -12px rgba(36,32,24,0.12);
@@ -157,7 +205,7 @@ select {
   border-radius: 10px;
   font-size: 1rem;
   font-family: var(--font-body);
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   transition: border-color 0.15s ease;
 }
@@ -179,7 +227,7 @@ select:focus {
   border: none;
   border-radius: 10px;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
   font-weight: 600;
   font-size: 1rem;
   transition: background 0.15s ease, transform 0.1s ease;
@@ -231,7 +279,7 @@ button:disabled {
 .loading-state p {
   font-family: var(--font-display);
   font-size: 1.3rem;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .loading-stream-preview {
@@ -265,7 +313,7 @@ button:disabled {
 .hero {
   position: relative;
   min-height: 60vh;
-  background-color: var(--navy);
+  background-color: var(--heading);
   background-size: cover;
   background-position: center;
   display: flex;
@@ -285,7 +333,7 @@ button:disabled {
   max-width: 780px;
   margin: 0 auto;
   width: 100%;
-  color: var(--paper);
+  color: var(--cream);
 }
 
 .hero-eyebrow {
@@ -323,7 +371,7 @@ button:disabled {
 }
 
 .hero-credit:hover {
-  color: var(--paper);
+  color: var(--cream);
 }
 
 .trip-body {
@@ -337,7 +385,7 @@ button:disabled {
 .trip-stub {
   display: flex;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
   border-radius: 16px;
   margin-top: -3rem;
   position: relative;
@@ -399,7 +447,7 @@ button:disabled {
 .stub-reset {
   background: transparent;
   border: 1.5px solid rgba(247,244,238,0.35);
-  color: var(--paper);
+  color: var(--cream);
   padding: 0.6rem 1rem;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -410,7 +458,7 @@ button:disabled {
 
 .stub-reset:hover {
   background: rgba(247,244,238,0.1);
-  border-color: var(--paper);
+  border-color: var(--cream);
 }
 
 /* ---------- Shared section heading ---------- */
@@ -434,7 +482,7 @@ button:disabled {
   padding: 0.4rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink-soft);
   font-family: var(--font-body);
   font-size: 0.8rem;
@@ -477,7 +525,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 2rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
   margin: 0;
 }
 
@@ -506,7 +554,7 @@ button:disabled {
 .attraction-card {
   flex: 0 0 300px;
   scroll-snap-align: start;
-  background: #fff;
+  background: var(--surface);
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -537,7 +585,7 @@ button:disabled {
   top: 0.75rem;
   left: 0.75rem;
   background: rgba(27,36,48,0.85);
-  color: var(--paper);
+  color: var(--cream);
   font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.06em;
@@ -559,7 +607,7 @@ button:disabled {
   font-size: 1.2rem;
   font-weight: 600;
   margin: 0;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .attraction-desc {
@@ -570,7 +618,7 @@ button:disabled {
 }
 
 .attraction-history {
-  background: var(--paper);
+  background: var(--bg);
   border-left: 3px solid var(--rust);
   padding: 0.6rem 0.8rem;
   border-radius: 0 8px 8px 0;
@@ -655,7 +703,7 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--paper);
+  color: var(--cream);
 }
 
 .timeline-day-header {
@@ -669,7 +717,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 1.35rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
   margin: 0.15rem 0 0.9rem;
 }
 
@@ -715,7 +763,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1.75rem;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 2rem;
@@ -795,7 +843,7 @@ button:disabled {
 
 .budget-per-person-toggle button {
   border: none;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink-soft);
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -806,7 +854,7 @@ button:disabled {
 
 .budget-per-person-toggle button.active {
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
 }
 
 .budget-bars {
@@ -858,7 +906,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .budget-total-amount {
@@ -934,9 +982,9 @@ button:disabled {
 }
 
 .save-pdf-btn {
-  background: #fff;
+  background: var(--surface);
   border: 1.5px solid var(--line);
-  color: var(--navy);
+  color: var(--heading);
   padding: 0.65rem 1.2rem;
   border-radius: 8px;
   font-size: 0.88rem;
@@ -946,13 +994,13 @@ button:disabled {
 
 .save-pdf-btn:hover:not(:disabled) {
   border-color: var(--rust);
-  background: var(--paper);
+  background: var(--bg);
 }
 
 .share-btn {
   background: var(--navy);
   border-color: var(--navy);
-  color: #fff;
+  color: var(--cream);
 }
 
 .share-btn:hover:not(:disabled) {
@@ -970,13 +1018,13 @@ button:disabled {
 .share-url {
   font-family: var(--font-mono);
   font-size: 0.8rem;
-  color: var(--navy);
+  color: var(--heading);
   word-break: break-all;
 }
 
 .shared-trip-banner {
   background: var(--sand);
-  color: var(--ink);
+  color: var(--ink-fixed);
   border-radius: 10px;
   padding: 0.75rem 1.1rem;
   font-size: 0.9rem;
@@ -986,7 +1034,7 @@ button:disabled {
 /* ---------- Flights ---------- */
 
 .flights-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 2rem;
@@ -999,7 +1047,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
   margin-bottom: 1.5rem;
 }
 
@@ -1020,7 +1068,7 @@ button:disabled {
   flex-direction: column;
   gap: 0.35rem;
   padding: 1.1rem;
-  background: var(--paper);
+  background: var(--bg);
   border-radius: 10px;
 }
 
@@ -1036,7 +1084,7 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: 1.15rem;
   font-weight: 500;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .flight-leg-airlines {
@@ -1053,7 +1101,7 @@ button:disabled {
 
 .flights-tip {
   font-size: 0.88rem;
-  color: var(--ink-soft);
+  color: var(--ink-fixed);
   background: var(--sand);
   padding: 0.75rem 1rem;
   border-radius: 8px;
@@ -1083,7 +1131,7 @@ button:disabled {
 }
 
 .dish-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 1.25rem;
@@ -1101,7 +1149,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
   margin: 0.4rem 0 0.5rem;
 }
 
@@ -1134,7 +1182,7 @@ button:disabled {
 
 .beverage-tag {
   background: var(--sand);
-  color: var(--ink);
+  color: var(--ink-fixed);
   font-size: 0.85rem;
   padding: 0.4rem 0.9rem;
   border-radius: 20px;
@@ -1142,7 +1190,7 @@ button:disabled {
 }
 
 .meal-cost {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 1.75rem;
@@ -1159,7 +1207,7 @@ button:disabled {
   flex-direction: column;
   gap: 0.3rem;
   padding: 1rem;
-  background: var(--paper);
+  background: var(--bg);
   border-radius: 10px;
 }
 
@@ -1175,7 +1223,7 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: 1rem;
   font-weight: 500;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .meal-cost-notes {
@@ -1200,7 +1248,7 @@ button:disabled {
 }
 
 .shopping-item {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
@@ -1217,7 +1265,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
   margin: 0;
 }
 
@@ -1250,7 +1298,7 @@ button:disabled {
 }
 
 .beware-item {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-left: 3px solid var(--rust);
   border-radius: 10px;
@@ -1261,7 +1309,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 1.02rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
   margin: 0 0 0.35rem;
 }
 
@@ -1275,7 +1323,7 @@ button:disabled {
 /* ---------- Emergency info ---------- */
 
 .emergency-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-left: 3px solid var(--sage);
   border-radius: 10px;
@@ -1301,7 +1349,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .emergency-embassy {
@@ -1330,7 +1378,7 @@ button:disabled {
 /* ---------- Budget warning (hard block) ---------- */
 
 .budget-warning {
-  background: #fff;
+  background: var(--surface);
   border: 1.5px solid var(--rust);
   border-radius: 20px;
   padding: 2.5rem 2rem;
@@ -1342,7 +1390,7 @@ button:disabled {
   width: 48px;
   height: 48px;
   background: var(--rust);
-  color: var(--paper);
+  color: var(--cream);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1356,7 +1404,7 @@ button:disabled {
 .budget-warning h2 {
   font-family: var(--font-display);
   font-size: 1.6rem;
-  color: var(--navy);
+  color: var(--heading);
   margin: 0 0 0.75rem;
 }
 
@@ -1394,7 +1442,7 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: 1.3rem;
   font-weight: 500;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .budget-warning-low {
@@ -1408,7 +1456,7 @@ button:disabled {
   border: none;
   border-radius: 10px;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
   font-weight: 600;
   font-size: 0.95rem;
 }
@@ -1420,7 +1468,7 @@ button:disabled {
 /* ---------- Currency & exchange ---------- */
 
 .currency-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 1.75rem 2rem;
@@ -1456,7 +1504,7 @@ button:disabled {
 .currency-value {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .currency-rate {
@@ -1465,7 +1513,7 @@ button:disabled {
 }
 
 .currency-recommendation {
-  background: var(--paper);
+  background: var(--bg);
   border-radius: 10px;
   padding: 1rem 1.1rem;
 }
@@ -1473,7 +1521,7 @@ button:disabled {
 .currency-rec-badge {
   display: inline-block;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -1494,7 +1542,7 @@ button:disabled {
 .currency-warning {
   border-left: 3px solid var(--rust);
   padding: 0.75rem 1rem;
-  background: var(--paper);
+  background: var(--bg);
   border-radius: 0 8px 8px 0;
 }
 
@@ -1562,7 +1610,7 @@ button:disabled {
   padding: 0.85rem 0.9rem;
   border: 1.5px solid var(--line);
   border-radius: 12px;
-  background: var(--paper);
+  background: var(--bg);
   text-align: left;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -1573,7 +1621,7 @@ button:disabled {
 
 .budget-category-btn.active {
   border-color: var(--rust);
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 0 0 1px var(--rust);
 }
 
@@ -1585,7 +1633,7 @@ button:disabled {
 .budget-category-label {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .budget-category-desc {
@@ -1647,7 +1695,7 @@ button:disabled {
   left: 0;
   right: 0;
   z-index: 20;
-  background: #fff;
+  background: var(--surface);
   border: 1.5px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 12px 28px -10px rgba(36,32,24,0.18);
@@ -1671,7 +1719,7 @@ button:disabled {
 
 .autocomplete-option.highlighted,
 .autocomplete-option:hover {
-  background: var(--paper);
+  background: var(--bg);
 }
 
 .autocomplete-pin {
@@ -1705,7 +1753,7 @@ button:disabled {
 
 .weather-summary-line {
   border-left: 3px solid var(--sage);
-  background: #fff;
+  background: var(--surface);
   padding: 0.75rem 1rem;
   border-radius: 0 10px 10px 0;
 }
@@ -1754,7 +1802,7 @@ button:disabled {
 .weather-live-day {
   flex: 0 0 auto;
   min-width: 84px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.65rem 0.5rem;
@@ -1777,7 +1825,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .weather-live-condition {
@@ -1798,7 +1846,7 @@ button:disabled {
 }
 
 .weather-month {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 1rem 1.1rem;
@@ -1817,7 +1865,7 @@ button:disabled {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1rem;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .weather-rating-badge {
@@ -1831,7 +1879,7 @@ button:disabled {
 
 .weather-rating-best {
   background: var(--sage);
-  color: #fff;
+  color: var(--cream);
 }
 
 .weather-rating-good {
@@ -1859,7 +1907,7 @@ button:disabled {
 .weather-temp-high {
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .weather-temp-low {
@@ -1993,7 +2041,7 @@ button:disabled {
 /* ---------- Trip history ---------- */
 
 .trip-history {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 1.75rem;
@@ -2009,12 +2057,12 @@ button:disabled {
 .trip-history-header h2 {
   font-family: var(--font-display);
   font-size: 1.4rem;
-  color: var(--navy);
+  color: var(--heading);
   margin: 0;
 }
 
 .trip-history-empty {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 2.5rem;
@@ -2038,7 +2086,7 @@ button:disabled {
   gap: 1rem;
   width: 100%;
   text-align: left;
-  background: var(--paper);
+  background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.75rem;
@@ -2069,7 +2117,7 @@ button:disabled {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1rem;
-  color: var(--navy);
+  color: var(--heading);
 }
 
 .trip-history-meta {
@@ -2113,7 +2161,7 @@ button:disabled {
 }
 
 .timeline-content li.activity-editable:hover {
-  background: var(--paper);
+  background: var(--bg);
 }
 
 .activity-controls {
@@ -2135,7 +2183,7 @@ button:disabled {
 }
 
 .activity-edit-btn:hover {
-  color: var(--navy);
+  color: var(--heading);
   background: var(--line);
 }
 
@@ -2148,7 +2196,7 @@ button:disabled {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.5rem;
-  background: var(--paper);
+  background: var(--bg);
   border-radius: 10px;
   padding: 0.75rem;
   margin: -0.3rem -0.5rem;
@@ -2186,7 +2234,7 @@ button:disabled {
 
 .activity-edit-save {
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
 }
 
 .activity-edit-save:hover {
@@ -2196,6 +2244,31 @@ button:disabled {
 .activity-edit-cancel {
   background: var(--line);
   color: var(--ink-soft);
+}
+
+/* ---------- Theme toggle ---------- */
+
+.theme-toggle {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.25);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.theme-toggle:hover {
+  color: var(--rust);
+  border-color: var(--rust);
 }
 
 /* ---------- Trip chat (floating Q&A widget) ---------- */
@@ -2217,7 +2290,7 @@ button:disabled {
   border-radius: 50%;
   border: none;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
   font-family: var(--font-mono);
   font-size: 0.85rem;
   font-weight: 600;
@@ -2239,7 +2312,7 @@ button:disabled {
   width: min(340px, calc(100vw - 3rem));
   height: 460px;
   max-height: 70vh;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow: 0 24px 48px -16px rgba(27, 36, 48, 0.35);
@@ -2254,7 +2327,7 @@ button:disabled {
   justify-content: space-between;
   padding: 0.9rem 1.1rem;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
   font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 600;
@@ -2263,7 +2336,7 @@ button:disabled {
 .trip-chat-close {
   background: none;
   border: none;
-  color: var(--paper);
+  color: var(--cream);
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
@@ -2291,7 +2364,7 @@ button:disabled {
 
 .trip-chat-msg-assistant {
   align-self: flex-start;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   color: var(--ink);
 }
@@ -2304,7 +2377,7 @@ button:disabled {
 .trip-chat-msg-user {
   align-self: flex-end;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
 }
 
 .trip-chat-error {
@@ -2318,7 +2391,7 @@ button:disabled {
   gap: 0.5rem;
   padding: 0.75rem;
   border-top: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
 }
 
 .trip-chat-input-row input {
@@ -2328,7 +2401,7 @@ button:disabled {
   padding: 0.55rem 0.75rem;
   font-family: var(--font-body);
   font-size: 0.85rem;
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
 }
 
@@ -2342,7 +2415,7 @@ button:disabled {
   border-radius: 10px;
   border: none;
   background: var(--navy);
-  color: var(--paper);
+  color: var(--cream);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;

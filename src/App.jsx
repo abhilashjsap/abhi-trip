@@ -4,6 +4,7 @@ import TripResult from "./components/TripResult";
 import BudgetWarning from "./components/BudgetWarning";
 import TripHistory from "./components/TripHistory";
 import UsageDashboard from "./components/UsageDashboard";
+import ThemeToggle from "./components/ThemeToggle";
 import PasswordGate, { isUnlocked } from "./components/PasswordGate";
 import { generateTripPlan, BudgetTooLowError } from "./utils/tripAI";
 import { RateLimitError } from "./utils/gemini";
@@ -141,95 +142,71 @@ export default function App() {
     setView("form");
   };
 
+  let content;
+
   // Shared trips bypass the password gate entirely — that's the point of
   // sharing a link with someone who doesn't have (and shouldn't need) the
   // app password.
   if (sharedId) {
     if (sharedLoading) {
-      return (
-        <div className="app-container">
-          <div className="loading-state">
-            <div className="loading-mark" />
-            <p>Loading shared trip...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (sharedError) {
-      return (
-        <div className="app-container">
-          <div className="landing">
-            <div className="landing-header">
-              <span className="brand-mark">AbhiTrip</span>
-              <h1>Couldn't load this trip.</h1>
-              <p>{sharedError}</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="app-container">
-        <TripResult trip={sharedTrip} readOnly />
-      </div>
-    );
-  }
-
-  if (!unlocked) {
-    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
-  }
-
-  if (loading) {
-    return (
-      <div className="app-container">
+      content = (
         <div className="loading-state">
           <div className="loading-mark" />
-          <p>Mapping out your trip...</p>
-          {streamPreview && (
-            <div className="loading-stream-preview" aria-hidden="true">
-              {/* Raw JSON as it streams in — not meant to be read, just a
-                  live signal that something is actually happening instead
-                  of a static spinner for 10-20 seconds. Tail end only, so
-                  it doesn't keep growing the box. */}
-              {streamPreview.slice(-600)}
-            </div>
-          )}
+          <p>Loading shared trip...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (feasibility) {
-    return (
-      <div className="app-container">
+      );
+    } else if (sharedError) {
+      content = (
         <div className="landing">
-          <BudgetWarning
-            feasibility={feasibility}
-            input={lastInput}
-            onAdjust={handleAdjust}
-          />
+          <div className="landing-header">
+            <span className="brand-mark">AbhiTrip</span>
+            <h1>Couldn't load this trip.</h1>
+            <p>{sharedError}</p>
+          </div>
         </div>
+      );
+    } else {
+      content = <TripResult trip={sharedTrip} readOnly />;
+    }
+  } else if (!unlocked) {
+    content = <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  } else if (loading) {
+    content = (
+      <div className="loading-state">
+        <div className="loading-mark" />
+        <p>Mapping out your trip...</p>
+        {streamPreview && (
+          <div className="loading-stream-preview" aria-hidden="true">
+            {/* Raw JSON as it streams in — not meant to be read, just a
+                live signal that something is actually happening instead
+                of a static spinner for 10-20 seconds. Tail end only, so
+                it doesn't keep growing the box. */}
+            {streamPreview.slice(-600)}
+          </div>
+        )}
       </div>
     );
-  }
-
-  if (trip) {
-    return (
-      <div className="app-container">
-        <TripResult
-          trip={trip}
-          onReset={handleReset}
-          onUpdateItinerary={handleUpdateItinerary}
-          onUpdateTrip={handleUpdateTrip}
+  } else if (feasibility) {
+    content = (
+      <div className="landing">
+        <BudgetWarning
+          feasibility={feasibility}
+          input={lastInput}
+          onAdjust={handleAdjust}
         />
       </div>
     );
-  }
-
-  return (
-    <div className="app-container">
+  } else if (trip) {
+    content = (
+      <TripResult
+        trip={trip}
+        onReset={handleReset}
+        onUpdateItinerary={handleUpdateItinerary}
+        onUpdateTrip={handleUpdateTrip}
+      />
+    );
+  } else {
+    content = (
       <div className="landing">
         <div className="landing-header">
           <span className="brand-mark">AbhiTrip</span>
@@ -267,6 +244,13 @@ export default function App() {
           </>
         )}
       </div>
+    );
+  }
+
+  return (
+    <div className="app-container">
+      {content}
+      <ThemeToggle />
     </div>
   );
 }
