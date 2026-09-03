@@ -217,7 +217,12 @@ export default function TripResult({
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("packingList")}
           regenerating={regeneratingKey === "packingList"}
         />
-        <TripPlanner planner={planner} currency={input?.currency} pax={input?.pax} />
+        <TripPlanner
+          planner={planner}
+          currency={input?.currency}
+          pax={input?.pax}
+          currencyInfo={currencyInfo}
+        />
       </div>
 
       <TripChat trip={trip} />

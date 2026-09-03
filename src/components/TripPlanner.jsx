@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-export default function TripPlanner({ planner, currency, pax }) {
+export default function TripPlanner({ planner, currency, pax, currencyInfo }) {
   const [perPerson, setPerPerson] = useState(false);
+  const [showLocal, setShowLocal] = useState(false);
 
   if (!planner) return null;
 
@@ -10,8 +11,22 @@ export default function TripPlanner({ planner, currency, pax }) {
   const showToggle = pax > 1;
   const divisor = showToggle && perPerson ? pax : 1;
 
-  const formatAmount = (amount) =>
-    `${currency} ${Math.round(amount / divisor).toLocaleString()}`;
+  const rate = currencyInfo?.isForeign ? Number(currencyInfo.oneUnitOfInputCurrencyInLocal) : null;
+  const localCode = currencyInfo?.localCurrencyCode;
+  const canShowLocal = rate != null && Number.isFinite(rate) && rate > 0 && !!localCode;
+
+  const formatAmount = (amount) => {
+    const displayed = amount / divisor;
+    const primary = `${currency} ${Math.round(displayed).toLocaleString()}`;
+    if (!showLocal || !canShowLocal) return primary;
+    const local = Math.round(displayed * rate).toLocaleString();
+    return (
+      <>
+        {primary}
+        <span className="budget-amount-local"> ≈ {local} {localCode}</span>
+      </>
+    );
+  };
 
   return (
     <section className="trip-planner">
@@ -20,24 +35,36 @@ export default function TripPlanner({ planner, currency, pax }) {
           <span className="section-eyebrow">The numbers</span>
           <h2>Budget breakdown</h2>
         </div>
-        {showToggle && (
-          <div className="budget-per-person-toggle" role="group" aria-label="Show costs as">
-            <button
-              type="button"
-              className={!perPerson ? "active" : ""}
-              onClick={() => setPerPerson(false)}
-            >
-              Total
-            </button>
-            <button
-              type="button"
-              className={perPerson ? "active" : ""}
-              onClick={() => setPerPerson(true)}
-            >
-              Per person
-            </button>
-          </div>
-        )}
+        <div className="budget-controls">
+          {canShowLocal && (
+            <label className="budget-local-toggle">
+              <input
+                type="checkbox"
+                checked={showLocal}
+                onChange={(e) => setShowLocal(e.target.checked)}
+              />
+              Also show in {localCode}
+            </label>
+          )}
+          {showToggle && (
+            <div className="budget-per-person-toggle" role="group" aria-label="Show costs as">
+              <button
+                type="button"
+                className={!perPerson ? "active" : ""}
+                onClick={() => setPerPerson(false)}
+              >
+                Total
+              </button>
+              <button
+                type="button"
+                className={perPerson ? "active" : ""}
+                onClick={() => setPerPerson(true)}
+              >
+                Per person
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="budget-bars">

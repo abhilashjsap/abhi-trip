@@ -759,6 +759,32 @@ button:disabled {
 
 /* ---------- Trip Planner / Budget ---------- */
 
+.budget-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.budget-local-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.budget-amount-local {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--sage);
+  font-weight: 400;
+}
+
 .budget-per-person-toggle {
   display: flex;
   border: 1px solid var(--line);
