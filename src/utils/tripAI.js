@@ -14,6 +14,7 @@ import {
   itineraryDaySchema,
   bewareOfItemSchema,
   emergencyInfoSchema,
+  tripExtrasSchema,
 } from "./tripSchemas";
 import logger from "./logger";
 
@@ -474,6 +475,44 @@ Rules:
 }
 
 /**
+ * Fetches visa/SIM/phrasebook/book-ahead/photo-tip info via a separate,
+ * smaller follow-up call rather than folding it into TRIP_PLAN_SCHEMA — the
+ * main schema has already grown to 11 required top-level sections and has
+ * been hitting Gemini's repetition-loop/incomplete-response bug at a high
+ * failure rate, so nothing new gets added to that call. Never throws:
+ * returns null on any failure, same "extras are optional, the trip itself
+ * isn't" pattern as the live FX rate and Unsplash images.
+ */
+async function getTripExtras(formData, attractionNames) {
+  const prompt = `
+Give practical extra info for a trip from ${formData.departureCity} to ${formData.destination}:
+- visaInfo: the real visa requirement for a traveler from ${formData.departureCity}'s country entering ${formData.destination} (e-visa / visa-free / visa-on-arrival / visa-required), with brief processing guidance.
+- simInfo: whether to get a local SIM/eSIM or use roaming, with rough cost and where to get one.
+- phrasebook: 4-6 useful phrases in the local language of ${formData.destination}, each with a rough phonetic pronunciation.
+- bookInAdvance: 2-4 things worth booking ahead for this specific trip, drawn from these actual attractions: ${attractionNames.join(", ") || "none listed"}.
+- attractionPhotoTips: for each of these attractions, one short "best photo spot" tip: ${attractionNames.join(", ") || "none listed"}. The "name" field must exactly match one of these names.
+Every field must be real and specific to ${formData.destination} — never placeholder text.
+`.trim();
+
+  try {
+    const raw = await generateCompletion({
+      system: SYSTEM_PROMPT,
+      prompt,
+      temperature: 0.6,
+      maxTokens: 2000,
+      json: true,
+      schema: tripExtrasSchema,
+      model: MODEL_SMALL,
+      thinkingLevel: "MINIMAL",
+    });
+    return JSON.parse(cleanJsonResponse(raw));
+  } catch (err) {
+    logger.debug("Trip extras call failed (non-fatal):", err);
+    return null;
+  }
+}
+
+/**
  * Generates a full trip plan (itinerary + packing list + planner + flights +
  * food + shopping + currency/exchange tips), gated by a budget feasibility
  * pre-check. Throws BudgetTooLowError if the budget is unrealistic — the
@@ -555,7 +594,7 @@ export async function generateTripPlan(formData, onProgress) {
 
   const attractionNames = (parsed.attractions || []).map((a) => a.name);
   const localCode = parsed.currencyInfo?.localCurrencyCode;
-  const [hero, attractionImages, liveRate] = await Promise.all([
+  const [hero, attractionImages, liveRate, extras] = await Promise.all([
     getDestinationHero(formData.destination).catch(() => null),
     getAttractionImages(attractionNames, formData.destination).catch(
       () => []
@@ -566,12 +605,17 @@ export async function generateTripPlan(formData, onProgress) {
     parsed.currencyInfo?.isForeign && localCode
       ? getExchangeRate(formData.currency, localCode)
       : Promise.resolve(null),
+    getTripExtras(formData, attractionNames),
   ]);
 
+  const photoTipByName = new Map(
+    (extras?.attractionPhotoTips || []).map((t) => [t.name.toLowerCase(), t.tip])
+  );
   const attractionsWithImages = (parsed.attractions || []).map(
     (attraction, idx) => ({
       ...attraction,
       image: attractionImages[idx] || null,
+      photoTip: photoTipByName.get(attraction.name.toLowerCase()) || null,
     })
   );
 
@@ -587,6 +631,10 @@ export async function generateTripPlan(formData, onProgress) {
     ...parsed,
     attractions: attractionsWithImages,
     heroImage: hero,
+    visaInfo: extras?.visaInfo || null,
+    simInfo: extras?.simInfo || null,
+    phrasebook: extras?.phrasebook || null,
+    bookInAdvance: extras?.bookInAdvance || null,
   };
 }
 

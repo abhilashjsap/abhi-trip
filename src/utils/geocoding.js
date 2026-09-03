@@ -3,6 +3,15 @@ import logger from "./logger";
 const BASE_URL = "https://nominatim.openstreetmap.org/search";
 
 /**
+ * Builds a Google Maps search URL for a named place — zero API calls, just
+ * URL construction from data already in the trip. Used for "search nearby"
+ * links on attractions/dishes/shopping items.
+ */
+export function buildMapsSearchUrl(query, destination) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${query}, ${destination}`)}`;
+}
+
+/**
  * Searches OpenStreetMap's Nominatim geocoder for place suggestions.
  * Free, no API key required — but usage policy requires a descriptive
  * identifying param and reasonable request rates (we debounce calls in the

@@ -1,6 +1,7 @@
 import RegenerateButton from "./RegenerateButton";
+import { buildMapsSearchUrl } from "../utils/geocoding";
 
-export default function Attractions({ attractions, onRegenerate, regenerating }) {
+export default function Attractions({ attractions, destination, onRegenerate, regenerating }) {
   if (!attractions?.length) return null;
 
   return (
@@ -42,6 +43,10 @@ export default function Attractions({ attractions, onRegenerate, regenerating })
                 </div>
               )}
 
+              {place.photoTip && (
+                <p className="attraction-photo-tip">📷 {place.photoTip}</p>
+              )}
+
               <div className="attraction-meta">
                 {place.bestTimeToVisit && (
                   <span>{place.bestTimeToVisit}</span>
@@ -50,6 +55,17 @@ export default function Attractions({ attractions, onRegenerate, regenerating })
                   <span>{place.estimatedDuration}</span>
                 )}
               </div>
+
+              {destination && (
+                <a
+                  className="map-search-link"
+                  href={buildMapsSearchUrl(place.name, destination)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Search nearby
+                </a>
+              )}
 
               {place.image?.credit && (
                 <a

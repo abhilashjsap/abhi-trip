@@ -1,6 +1,7 @@
 import RegenerateButton from "./RegenerateButton";
+import { buildMapsSearchUrl } from "../utils/geocoding";
 
-export default function Shopping({ shopping, onRegenerate, regenerating }) {
+export default function Shopping({ shopping, destination, onRegenerate, regenerating }) {
   if (!shopping?.length) return null;
 
   return (
@@ -27,6 +28,16 @@ export default function Shopping({ shopping, onRegenerate, regenerating }) {
             <p>{item.description}</p>
             {item.whereToBuy && (
               <span className="shopping-where">Where: {item.whereToBuy}</span>
+            )}
+            {destination && (
+              <a
+                className="map-search-link"
+                href={buildMapsSearchUrl(item.whereToBuy || item.item, destination)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Search nearby
+              </a>
             )}
           </div>
         ))}

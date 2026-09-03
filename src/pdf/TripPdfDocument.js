@@ -250,6 +250,8 @@ function AttractionsSection(attractions) {
                 { key: "hist", style: styles.mutedText },
                 place.historicalSignificance
               ),
+            place.photoTip &&
+              h(Text, { key: "photoTip", style: styles.mutedText }, `Photo tip: ${place.photoTip}`),
             h(
               Text,
               { key: "meta", style: styles.cardMeta },
@@ -415,6 +417,42 @@ function EmergencyInfoSection(emergencyInfo) {
   ]);
 }
 
+function PracticalInfoSection(visaInfo, simInfo, bookInAdvance) {
+  if (!visaInfo && !simInfo) return null;
+  return Section("practicalInfo", "Before you go", "Practical info", [
+    visaInfo &&
+      h(Text, { key: "visa", style: [styles.bodyText, { marginBottom: 6 }] }, [
+        h(Text, { key: "n", style: { fontFamily: "Helvetica-Bold" } }, `Visa: ${visaInfo.status} — `),
+        visaInfo.note,
+      ]),
+    simInfo &&
+      h(Text, { key: "sim", style: [styles.bodyText, { marginBottom: 6 }] }, [
+        h(Text, { key: "n", style: { fontFamily: "Helvetica-Bold" } }, `SIM: ${simInfo.recommendation} — `),
+        simInfo.note,
+      ]),
+    bookInAdvance?.length > 0 &&
+      h(Text, { key: "book", style: styles.mutedText }, [
+        h(Text, { key: "n", style: { fontFamily: "Helvetica-Bold" } }, "Book in advance: "),
+        bookInAdvance.join("; "),
+      ]),
+  ]);
+}
+
+function PhrasebookSection(phrasebook) {
+  if (!phrasebook?.length) return null;
+  return Section(
+    "phrasebook",
+    "Speak a little local",
+    "Useful phrases",
+    phrasebook.map((entry, idx) =>
+      h(Text, { key: idx, style: [styles.bodyText, { marginBottom: 4 }] }, [
+        h(Text, { key: "n", style: { fontFamily: "Helvetica-Bold" } }, `${entry.phrase}: `),
+        `${entry.translation} (${entry.pronunciation})`,
+      ])
+    )
+  );
+}
+
 function FoodSection(food) {
   if (!food) return null;
   return Section("food", "Eat & drink", "Local food to try", [
@@ -512,6 +550,10 @@ export default function TripPdfDocument({ trip }) {
     currencyInfo,
     bewareOf,
     emergencyInfo,
+    visaInfo,
+    simInfo,
+    phrasebook,
+    bookInAdvance,
   } = trip;
 
   const currency = input?.currency;
@@ -568,6 +610,8 @@ export default function TripPdfDocument({ trip }) {
       CurrencySection(currencyInfo, currency),
       BewareOfSection(bewareOf),
       EmergencyInfoSection(emergencyInfo),
+      PracticalInfoSection(visaInfo, simInfo, bookInAdvance),
+      PhrasebookSection(phrasebook),
       FoodSection(food),
       ShoppingSection(shopping),
       PackingListSection(packingList),

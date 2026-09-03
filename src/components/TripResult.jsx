@@ -10,6 +10,8 @@ import CurrencyInfo from "./CurrencyInfo";
 import Weather from "./Weather";
 import BewareOf from "./BewareOf";
 import EmergencyInfo from "./EmergencyInfo";
+import PracticalInfo from "./PracticalInfo";
+import Phrasebook from "./Phrasebook";
 import AttractionsMap from "./AttractionsMap";
 import TripStub from "./TripStub";
 import TripChat from "./TripChat";
@@ -43,7 +45,7 @@ export default function TripResult({
 
   if (!trip) return null;
 
-  const { input, itinerary, packingList, planner, attractions, heroImage, flights, food, shopping, currencyInfo, weather, bewareOf, emergencyInfo } = trip;
+  const { input, itinerary, packingList, planner, attractions, heroImage, flights, food, shopping, currencyInfo, weather, bewareOf, emergencyInfo, visaInfo, simInfo, phrasebook, bookInAdvance } = trip;
 
   const handleSavePdf = async () => {
     setExporting(true);
@@ -175,6 +177,7 @@ export default function TripResult({
 
         <Attractions
           attractions={attractions}
+          destination={input?.destination}
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("attractions")}
           regenerating={regeneratingKey === "attractions"}
         />
@@ -208,14 +211,18 @@ export default function TripResult({
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("emergencyInfo")}
           regenerating={regeneratingKey === "emergencyInfo"}
         />
+        <PracticalInfo visaInfo={visaInfo} simInfo={simInfo} bookInAdvance={bookInAdvance} />
+        <Phrasebook phrasebook={phrasebook} />
         <FoodAndDrink
           food={food}
           currency={input?.currency}
+          destination={input?.destination}
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("food")}
           regenerating={regeneratingKey === "food"}
         />
         <Shopping
           shopping={shopping}
+          destination={input?.destination}
           onRegenerate={readOnly ? undefined : () => handleRegenerateSection("shopping")}
           regenerating={regeneratingKey === "shopping"}
         />

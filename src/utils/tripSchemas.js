@@ -194,6 +194,66 @@ export const emergencyInfoSchema = {
   required: ["generalEmergencyNumber", "embassyNote"],
 };
 
+// Deliberately NOT part of TRIP_PLAN_SCHEMA/the main generation call — the
+// main schema has already grown to 11 required top-level sections and has
+// been hitting Gemini's repetition-loop/incomplete-response bug at a high
+// failure rate. This is a separate, smaller follow-up call (see
+// getTripExtras in tripAI.js) so a failure here never blocks the trip
+// itself from generating; it just means these extras are missing.
+export const tripExtrasSchema = {
+  type: "OBJECT",
+  properties: {
+    visaInfo: {
+      type: "OBJECT",
+      properties: {
+        status: { type: "STRING", maxLength: "60" },
+        note: { type: "STRING", maxLength: "300" },
+      },
+      required: ["status", "note"],
+    },
+    simInfo: {
+      type: "OBJECT",
+      properties: {
+        recommendation: { type: "STRING", maxLength: "60" },
+        note: { type: "STRING", maxLength: "300" },
+      },
+      required: ["recommendation", "note"],
+    },
+    phrasebook: {
+      type: "ARRAY",
+      minItems: "4",
+      maxItems: "6",
+      items: {
+        type: "OBJECT",
+        properties: {
+          phrase: { type: "STRING", maxLength: "40" },
+          translation: { type: "STRING", maxLength: "60" },
+          pronunciation: { type: "STRING", maxLength: "60" },
+        },
+        required: ["phrase", "translation", "pronunciation"],
+      },
+    },
+    bookInAdvance: {
+      type: "ARRAY",
+      minItems: "2",
+      maxItems: "4",
+      items: { type: "STRING", maxLength: "150" },
+    },
+    attractionPhotoTips: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING", maxLength: "80" },
+          tip: { type: "STRING", maxLength: "150" },
+        },
+        required: ["name", "tip"],
+      },
+    },
+  },
+  required: ["visaInfo", "simInfo", "phrasebook", "bookInAdvance", "attractionPhotoTips"],
+};
+
 const currencyInfoSchema = {
   type: "OBJECT",
   properties: {

@@ -1,6 +1,7 @@
 import RegenerateButton from "./RegenerateButton";
+import { buildMapsSearchUrl } from "../utils/geocoding";
 
-export default function FoodAndDrink({ food, currency, onRegenerate, regenerating }) {
+export default function FoodAndDrink({ food, currency, destination, onRegenerate, regenerating }) {
   if (!food) return null;
 
   const { dishes = [], beverages = [], mealCostEstimate } = food;
@@ -24,6 +25,16 @@ export default function FoodAndDrink({ food, currency, onRegenerate, regeneratin
               <span className="dish-type">{dish.type}</span>
               <h4>{dish.name}</h4>
               <p>{dish.description}</p>
+              {destination && (
+                <a
+                  className="map-search-link"
+                  href={buildMapsSearchUrl(`${dish.name} restaurant`, destination)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Find nearby
+                </a>
+              )}
             </div>
           ))}
         </div>

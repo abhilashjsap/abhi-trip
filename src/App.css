@@ -649,6 +649,26 @@ button:disabled {
   font-family: var(--font-mono);
 }
 
+.map-search-link {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--rust);
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+.map-search-link:hover {
+  text-decoration: underline;
+}
+
+.attraction-photo-tip {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: 0.5rem 0 0;
+}
+
 .photo-credit {
   font-size: 0.68rem;
   color: var(--sage);
@@ -1373,6 +1393,98 @@ button:disabled {
   color: var(--ink-soft);
   line-height: 1.5;
   margin: 0;
+}
+
+/* ---------- Practical info (visa / SIM / book-in-advance) ---------- */
+
+.practical-info-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.practical-info-block + .practical-info-block {
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+}
+
+.practical-info-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sage);
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.practical-info-status {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0 0 0.3rem;
+}
+
+.practical-info-block p {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.practical-info-block ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.practical-info-block li {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+/* ---------- Phrasebook ---------- */
+
+.phrasebook-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.9rem;
+}
+
+.phrasebook-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.phrasebook-english {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+
+.phrasebook-translation {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.phrasebook-pronunciation {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-style: italic;
 }
 
 /* ---------- Budget warning (hard block) ---------- */
