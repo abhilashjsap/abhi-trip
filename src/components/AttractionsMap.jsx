@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -85,6 +85,15 @@ export default function AttractionsMap({ attractions, destination }) {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            {located.length > 1 && (
+              // A rough path through the attractions in the order the AI
+              // listed them — not a guaranteed itinerary-day sequence, just
+              // enough to give a sense of how spread out the trip is.
+              <Polyline
+                positions={located.map(({ lat, lng }) => [lat, lng])}
+                pathOptions={{ color: "#B8543A", weight: 3, opacity: 0.55, dashArray: "6 8" }}
+              />
+            )}
             {located.map(({ lat, lng, attraction }, idx) => (
               <Marker key={idx} position={[lat, lng]}>
                 <Popup>{attraction.name}</Popup>
