@@ -665,7 +665,7 @@ button:disabled {
   font-size: 0.72rem;
   color: var(--rust);
   text-decoration: none;
-  display: inline-block;
+  display: block;
   margin-top: 0.5rem;
 }
 
