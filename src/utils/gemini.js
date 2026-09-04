@@ -21,6 +21,18 @@ import logger from "./logger";
 export const MODEL_LARGE = "gemini-3.6-flash";
 export const MODEL_SMALL = "gemini-3.5-flash-lite";
 
+// Gemini enforces its free-tier daily request quota per model (confirmed
+// live via multiple real 429s, each naming the specific model in
+// quotaDimensions) — so a different model has its own separate 20/day
+// allowance, entirely independent of MODEL_LARGE's. Used as an automatic
+// fallback in generateCompletion when MODEL_LARGE's quota is exhausted,
+// rather than failing the whole generation for the rest of the day.
+// Not yet used anywhere else in this app — first live use is this
+// fallback path, so its actual availability/quota/content quality are
+// still unverified in production (see the caution in gemini.js's
+// generateCompletion docs).
+export const MODEL_FALLBACK = "gemini-2.5-flash-lite";
+
 const USAGE_STORAGE_KEY = "abhitrip_usage_log";
 
 // The free tier's actual binding constraint is a hard REQUEST COUNT per day
@@ -250,6 +262,13 @@ function sleep(ms) {
  *   when json is true. Enforces structural validity server-side instead of
  *   just hoping the model's prose-described JSON shape holds up.
  * @param {string} [params.model=MODEL_LARGE] - which Gemini model to use
+ * @param {string} [params.fallbackModel] - if the primary model's daily
+ *   quota is exhausted (429), automatically switch to this model instead of
+ *   failing outright — Gemini enforces quota per-model, so a different
+ *   model has its own separate allowance. Only switches once. Unverified in
+ *   production so far: whichever model is passed as the fallback might
+ *   itself be unavailable, quota-exhausted, or simply produce lower-quality
+ *   content — this is a best-effort extra chance, not a guarantee.
  * @param {string} [params.thinkingLevel="LOW"] - MINIMAL/LOW/MEDIUM/HIGH.
  *   Thinking tokens draw from the same maxTokens budget as the visible
  *   response, so keeping this low leaves more room for the actual output
@@ -269,16 +288,20 @@ export async function generateCompletion({
   json = false,
   schema,
   model = MODEL_LARGE,
+  fallbackModel,
   thinkingLevel = "LOW",
   onChunk,
 }) {
   // Gemini's 503 "model overloaded" errors are explicitly billed as usually
   // temporary, so this gets a bit more patience than a plain network blip:
   // 3 retries with growing backoff (700ms/1400ms/2800ms, ~4.9s total) before
-  // giving up.
-  const maxRetries = 3;
+  // giving up. Mutable (not const): a fallback-model switch grants one extra
+  // slot so the fallback still gets tried even if the quota hit on what
+  // would otherwise have been the last attempt.
+  let maxRetries = 3;
   let lastErr;
   let lastStatus;
+  let usedFallback = false;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -427,6 +450,20 @@ export async function generateCompletion({
       lastErr = err;
       lastStatus = err?.status;
 
+      // 429 means THIS model's daily quota is exhausted — retrying the
+      // same model is pointless (it'll just 429 again), but quota is
+      // enforced per-model, so a different model has its own separate
+      // allowance. Switch once; +1 to maxRetries guarantees the fallback
+      // actually gets tried even if this 429 landed on what would
+      // otherwise have been the final attempt.
+      if (lastStatus === 429 && fallbackModel && !usedFallback) {
+        logger.error(`Quota exhausted for ${model}, falling back to ${fallbackModel}:`, err);
+        model = fallbackModel;
+        usedFallback = true;
+        maxRetries += 1;
+        continue;
+      }
+
       const isRepetitionLoop = err instanceof RepetitionLoopError;
       const isIncomplete = err instanceof IncompleteResponseError;
 
@@ -466,7 +503,9 @@ export async function generateCompletion({
 
   if (lastStatus === 429) {
     throw new RateLimitError(
-      "Gemini's free-tier rate limit has been reached for this app. Please wait a bit and try again."
+      usedFallback
+        ? "Gemini's free-tier rate limit has been reached for this app — even the backup model's daily quota is exhausted. Please wait a bit and try again."
+        : "Gemini's free-tier rate limit has been reached for this app. Please wait a bit and try again."
     );
   }
 

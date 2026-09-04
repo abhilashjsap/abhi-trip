@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { generateCompletion, MODEL_SMALL } from "./gemini";
+import { generateCompletion, MODEL_SMALL, MODEL_FALLBACK } from "./gemini";
 import { getDestinationHero, getAttractionImages } from "./unsplash";
 import { getExchangeRate } from "./fx";
 import {
@@ -572,6 +572,12 @@ export async function generateTripPlan(formData, onProgress) {
     json: true,
     schema: TRIP_PLAN_SCHEMA,
     onChunk: onProgress,
+    // If MODEL_LARGE's daily quota is exhausted, automatically try the
+    // fallback model instead of failing the whole generation for the rest
+    // of the day — Gemini enforces quota per-model, so it has its own
+    // separate allowance. See generateCompletion's docs for the caveats
+    // (unverified availability/quality in production so far).
+    fallbackModel: MODEL_FALLBACK,
     // This prompt asks for a LOT in one shot (12 months of weather, a full
     // itinerary, attractions, food, shopping, currency info, ...). Went to
     // "MEDIUM" briefly to fix lazy placeholder text ("reason text") on
