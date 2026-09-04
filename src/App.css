@@ -28,6 +28,12 @@
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+
+  /* Tells the browser which palette to use for native form-control chrome
+     (the date input's calendar icon, scrollbars, etc.) — without this,
+     those elements render as if the page were always light, regardless of
+     our own theme tokens. */
+  color-scheme: light;
 }
 
 /* System dark mode — only applies when the user hasn't made an explicit
@@ -46,6 +52,8 @@
     --rust: #D06B4F;
     --rust-light: #E6896A;
     --sage: #93A896;
+
+    color-scheme: dark;
   }
 }
 
@@ -63,6 +71,8 @@
   --rust: #D06B4F;
   --rust-light: #E6896A;
   --sage: #93A896;
+
+  color-scheme: dark;
 }
 
 * {
@@ -199,6 +209,7 @@ button {
 
 input[type="text"],
 input[type="number"],
+input[type="date"],
 select {
   padding: 0.8rem 1rem;
   border: 1.5px solid var(--line);
