@@ -74,7 +74,11 @@ function writeTodayUsageRaw(data) {
 /** Reads today's recorded REQUEST COUNT per model — the real quota ceiling. */
 export function getTodayRequestCounts() {
   const { requests } = readTodayUsageRaw();
-  return { [MODEL_LARGE]: requests[MODEL_LARGE] || 0, [MODEL_SMALL]: requests[MODEL_SMALL] || 0 };
+  return {
+    [MODEL_LARGE]: requests[MODEL_LARGE] || 0,
+    [MODEL_SMALL]: requests[MODEL_SMALL] || 0,
+    [MODEL_FALLBACK]: requests[MODEL_FALLBACK] || 0,
+  };
 }
 
 /** Call once per actual network attempt to Gemini (including retries) —

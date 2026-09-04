@@ -1,24 +1,23 @@
-import { MODEL_LARGE, MODEL_SMALL } from "./gemini";
+import { MODEL_LARGE, MODEL_SMALL, MODEL_FALLBACK } from "./gemini";
 import logger from "./logger";
 
 // The free tier's real binding constraint is a hard REQUEST COUNT per day,
 // not a token budget — confirmed live via an actual 429 while MODEL_LARGE
 // was still gemini-3.5-flash (quotaId GenerateRequestsPerDayPerProjectPer
-// Model-FreeTier, quotaValue "20"). Google no longer publishes fixed numbers
-// on ai.google.dev, and cut free-tier Flash quotas heavily in Dec 2025; check
+// Model-FreeTier, quotaValue "20"), and reconfirmed again for the current
+// MODEL_LARGE (gemini-3.6-flash) — still exactly 20. Google no longer
+// publishes fixed numbers on ai.google.dev; check
 // https://aistudio.google.com/rate-limit for this account's live figures.
 //
-// MODEL_LARGE is now gemini-3.6-flash (2026-09-01, see gemini.js) — Google's
-// own 404 error on the previously-tried gemini-2.5-flash named this as the
-// direct replacement, which means the model lineup has already moved past
-// what any available research reflects. There is zero real data on this
-// model's free-tier RPD yet, so this stays at the same conservative figure
-// as the old gemini-3.5-flash rather than guessing upward — better to
-// under-promise than repeat the "213 trips left" fiasco. Update once a real
-// 429 (or the AI Studio dashboard) gives an actual figure.
+// MODEL_FALLBACK (gemini-2.5-flash-lite) has never actually been used live
+// in this app — its real quota is completely unconfirmed. Deliberately NOT
+// guessing upward from third-party estimates here (that's exactly how the
+// old "213 trips left" bug happened) — it stays at the same conservative
+// 20 until a real 429 (or the AI Studio dashboard) gives an actual number.
 export const DAILY_REQUEST_LIMIT = {
   [MODEL_LARGE]: 20,
   [MODEL_SMALL]: 20,
+  [MODEL_FALLBACK]: 20,
 };
 
 const CURRENT_TRIP_KEY = "abhi-trip-current";
