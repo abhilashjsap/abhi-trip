@@ -267,12 +267,15 @@ function sleep(ms) {
  *   just hoping the model's prose-described JSON shape holds up.
  * @param {string} [params.model=MODEL_LARGE] - which Gemini model to use
  * @param {string} [params.fallbackModel] - if the primary model's daily
- *   quota is exhausted (429), automatically switch to this model instead of
- *   failing outright — Gemini enforces quota per-model, so a different
- *   model has its own separate allowance. Only switches once. Unverified in
- *   production so far: whichever model is passed as the fallback might
- *   itself be unavailable, quota-exhausted, or simply produce lower-quality
- *   content — this is a best-effort extra chance, not a guarantee.
+ *   quota is exhausted (429), OR it burns through all its own retries on
+ *   transient failures (503 overload, repetition loops, incomplete
+ *   responses) without ever succeeding, automatically switch to this model
+ *   instead of failing outright — Gemini enforces quota per-model, and a
+ *   demand spike or decoding hiccup on one model doesn't necessarily affect
+ *   a different one. Only switches once. Unverified in production so far:
+ *   whichever model is passed as the fallback might itself be unavailable,
+ *   quota-exhausted, or simply produce lower-quality content — this is a
+ *   best-effort extra chance, not a guarantee.
  * @param {string} [params.thinkingLevel="LOW"] - MINIMAL/LOW/MEDIUM/HIGH.
  *   Thinking tokens draw from the same maxTokens budget as the visible
  *   response, so keeping this low leaves more room for the actual output
@@ -470,8 +473,9 @@ export async function generateCompletion({
 
       const isRepetitionLoop = err instanceof RepetitionLoopError;
       const isIncomplete = err instanceof IncompleteResponseError;
+      const isTransient = isRepetitionLoop || isIncomplete || isRetryableError(lastStatus);
 
-      if (attempt < maxRetries && (isRepetitionLoop || isIncomplete || isRetryableError(lastStatus))) {
+      if (attempt < maxRetries && isTransient) {
         // Neither a repetition loop nor an early non-STOP finish is a
         // network/server issue — a fresh sampling attempt is very unlikely
         // to hit the same problem, so there's no reason to wait before
@@ -485,6 +489,23 @@ export async function generateCompletion({
         continue;
       }
 
+      // The primary model burned through all its own retries without ever
+      // giving a clean quota signal (429) — observed live as a run of 503
+      // "high demand" overload errors interleaved with incomplete-response
+      // guards, none of which ever let the 429 branch above fire. A demand
+      // spike hammering one model's backend doesn't necessarily touch a
+      // different model's, so it's worth one shot on the fallback before
+      // failing outright. Skip for 401/403 — those are API-key/config
+      // problems that would hit the fallback identically, not anything
+      // model-specific.
+      if (isTransient && fallbackModel && !usedFallback && lastStatus !== 401 && lastStatus !== 403) {
+        logger.error(`${model} exhausted its retries, falling back to ${fallbackModel}:`, err);
+        model = fallbackModel;
+        usedFallback = true;
+        maxRetries += 1;
+        continue;
+      }
+
       break;
     }
   }
@@ -493,15 +514,21 @@ export async function generateCompletion({
 
   if (lastErr instanceof RepetitionLoopError) {
     throw new Error(
-      "The AI kept getting stuck repeating itself and couldn't finish. Please try again."
+      usedFallback
+        ? "The AI kept getting stuck repeating itself on both the main and backup models. Please try again."
+        : "The AI kept getting stuck repeating itself and couldn't finish. Please try again."
     );
   }
 
   if (lastErr instanceof IncompleteResponseError) {
     throw new Error(
-      `The AI kept stopping before finishing its response (${
-        lastErr.finishReason || "no finish signal received"
-      }). Please try again.`
+      usedFallback
+        ? `Both the main and backup models kept stopping before finishing (${
+            lastErr.finishReason || "no finish signal received"
+          }). Please try again.`
+        : `The AI kept stopping before finishing its response (${
+            lastErr.finishReason || "no finish signal received"
+          }). Please try again.`
     );
   }
 
@@ -519,7 +546,9 @@ export async function generateCompletion({
 
   if (lastStatus === 503) {
     throw new Error(
-      "Gemini's servers are temporarily overloaded. This usually clears up within a minute or two — please try again shortly."
+      usedFallback
+        ? "Both the main and backup Gemini models are temporarily overloaded right now. Please try again shortly."
+        : "Gemini's servers are temporarily overloaded. This usually clears up within a minute or two — please try again shortly."
     );
   }
 
