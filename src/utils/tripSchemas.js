@@ -74,10 +74,16 @@ export const itineraryDaySchema = {
   type: "OBJECT",
   properties: {
     day: { type: "INTEGER" },
+    // Which stop this day belongs to, for multi-destination trips — a
+    // transfer day is attributed to the destination the traveler wakes up
+    // in that morning. Required (not just multi-stop-only) so single- and
+    // multi-destination trips share one schema/shape; for a single
+    // destination this is just always that one destination's name.
+    destination: { type: "STRING" },
     title: { type: "STRING" },
     activities: { type: "ARRAY", items: activitySchema },
   },
-  required: ["day", "title", "activities"],
+  required: ["day", "destination", "title", "activities"],
 };
 
 export const attractionSchema = {
@@ -109,12 +115,38 @@ const flightsSchema = {
   nullable: true,
   properties: {
     departureCity: { type: "STRING" },
+    // For a multi-destination trip this is the FIRST stop (where the
+    // outbound leg arrives) — an open-jaw itinerary flies home from the
+    // LAST stop instead of backtracking, hence returnFromDestination below.
+    // For a single-destination trip they're the same place.
     destination: { type: "STRING" },
+    returnFromDestination: { type: "STRING", nullable: true },
     outbound: flightLegSchema,
     returnFlight: flightLegSchema,
     bookingTip: { type: "STRING", maxLength: "300" },
   },
   required: ["departureCity", "destination", "outbound", "returnFlight", "bookingTip"],
+};
+
+// One inter-city hop for a multi-destination trip (e.g. Kuala Lumpur ->
+// Singapore). Not part of flightsSchema since a hop isn't necessarily a
+// flight — could be a train, bus, ferry, or car.
+export const interCityLegSchema = {
+  type: "OBJECT",
+  properties: {
+    from: { type: "STRING" },
+    to: { type: "STRING" },
+    mode: {
+      type: "STRING",
+      format: "enum",
+      enum: ["flight", "train", "bus", "ferry", "car"],
+    },
+    priceRangeLow: { type: "NUMBER" },
+    priceRangeHigh: { type: "NUMBER" },
+    typicalDurationHours: { type: "NUMBER" },
+    notes: { type: "STRING", maxLength: "300" },
+  },
+  required: ["from", "to", "mode", "priceRangeLow", "priceRangeHigh", "typicalDurationHours", "notes"],
 };
 
 const dishSchema = {
@@ -367,4 +399,54 @@ export const TRIP_PLAN_SCHEMA = {
     "bewareOf",
     "emergencyInfo",
   ],
+};
+
+// Used for multi-destination trips (2+ stops) instead of TRIP_PLAN_SCHEMA —
+// one call per stop, requesting only the content that's genuinely scoped to
+// THAT destination (its own climate, attractions, food, currency, safety
+// notes). Deliberately everything TRIP_PLAN_SCHEMA has EXCEPT itinerary,
+// planner, flights, and packingList — those are cross-cutting across the
+// whole trip and live in ITINERARY_AND_BUDGET_SCHEMA below instead. Keeping
+// this call's section count below today's single-destination call (7 vs
+// 10-11) is deliberate: the existing call already sits right at the edge of
+// Gemini's repetition-loop/truncation failure mode at its current size, so
+// this must not grow past it just because there are now multiple stops.
+export const PER_DESTINATION_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    weather: weatherSchema,
+    attractions: { type: "ARRAY", items: attractionSchema },
+    food: foodSchema,
+    shopping: { type: "ARRAY", items: shoppingItemSchema },
+    currencyInfo: currencyInfoSchema,
+    bewareOf: { type: "ARRAY", items: bewareOfItemSchema, minItems: "3", maxItems: "6" },
+    emergencyInfo: emergencyInfoSchema,
+  },
+  required: [
+    "weather",
+    "attractions",
+    "food",
+    "shopping",
+    "currencyInfo",
+    "bewareOf",
+    "emergencyInfo",
+  ],
+};
+
+// Used for multi-destination trips (2+ stops) — the ONE cross-cutting call
+// covering everything that spans the whole trip rather than a single stop:
+// the day-by-day itinerary (each day tagged with which stop it's in), the
+// overall budget breakdown, the open-jaw flights in/out, the inter-city legs
+// between stops, and a single trip-wide packing list (a traveler packs once
+// before leaving home, regardless of how many stops the trip has).
+export const ITINERARY_AND_BUDGET_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    itinerary: { type: "ARRAY", items: itineraryDaySchema },
+    planner: plannerSchema,
+    flights: flightsSchema,
+    packingList: packingListSchema,
+    interCityLegs: { type: "ARRAY", items: interCityLegSchema },
+  },
+  required: ["itinerary", "planner", "packingList", "interCityLegs"],
 };

@@ -85,6 +85,15 @@ const styles = StyleSheet.create({
     color: COLORS.navy,
     marginBottom: 10,
   },
+  destinationHeading: {
+    fontFamily: "Times-Bold",
+    fontSize: 20,
+    color: COLORS.navy,
+    marginTop: 20,
+    marginBottom: 6,
+    paddingBottom: 6,
+    borderBottom: `2pt solid ${COLORS.rust}`,
+  },
   card: {
     border: `1pt solid ${COLORS.line}`,
     borderRadius: 6,
@@ -331,7 +340,9 @@ function FlightsSection(flights, currency) {
     h(
       Text,
       { key: "route", style: [styles.bodyText, { marginBottom: 6 }] },
-      `${flights.departureCity}  to  ${flights.destination}`
+      flights.returnFromDestination && flights.returnFromDestination !== flights.destination
+        ? `${flights.departureCity}  to  ${flights.destination}, returning from  ${flights.returnFromDestination}`
+        : `${flights.departureCity}  to  ${flights.destination}`
     ),
     h(View, { key: "legs", style: styles.row }, [
       h(View, { key: "out", style: { flex: 1 } }, [
@@ -364,6 +375,31 @@ function FlightsSection(flights, currency) {
     flights.bookingTip &&
       h(Text, { key: "tip", style: [styles.mutedText, { marginTop: 6 }] }, flights.bookingTip),
   ]);
+}
+
+function InterCityLegsSection(interCityLegs, currency) {
+  if (!interCityLegs?.length) return null;
+  return Section(
+    "interCityLegs",
+    "Getting between stops",
+    "Inter-city transport",
+    interCityLegs.map((leg, idx) =>
+      h(View, { key: idx, style: styles.card, wrap: false }, [
+        h(
+          Text,
+          { key: "route", style: styles.cardTitle },
+          `${leg.from} to ${leg.to} — ${leg.mode}`
+        ),
+        h(
+          Text,
+          { key: "price", style: styles.bodyText },
+          `${money(leg.priceRangeLow, currency)} - ${money(leg.priceRangeHigh, currency)}` +
+            (leg.typicalDurationHours ? `, ~${leg.typicalDurationHours}h` : "")
+        ),
+        leg.notes && h(Text, { key: "notes", style: styles.mutedText }, leg.notes),
+      ])
+    )
+  );
 }
 
 function CurrencySection(currencyInfo, currency) {
@@ -539,24 +575,39 @@ function PlannerSection(planner, currency) {
 export default function TripPdfDocument({ trip }) {
   const {
     input,
-    weather,
     itinerary,
     packingList,
     planner,
-    attractions,
     flights,
-    food,
-    shopping,
-    currencyInfo,
-    bewareOf,
-    emergencyInfo,
-    visaInfo,
-    simInfo,
-    phrasebook,
-    bookInAdvance,
+    interCityLegs,
+    destinations,
+    perDestination = [],
   } = trip;
 
   const currency = input?.currency;
+  const isMulti = (destinations?.length || 1) > 1;
+
+  const destinationSections = perDestination.flatMap((dest, idx) => {
+    if (dest.failed) return [];
+    return [
+      h(
+        View,
+        { key: `dest-${idx}` },
+        [
+          isMulti && h(Text, { key: "heading", style: styles.destinationHeading }, dest.destination),
+          AttractionsSection(dest.attractions),
+          WeatherSection(dest.weather),
+          FoodSection(dest.food),
+          ShoppingSection(dest.shopping),
+          CurrencySection(dest.currencyInfo, currency),
+          BewareOfSection(dest.bewareOf),
+          EmergencyInfoSection(dest.emergencyInfo),
+          PracticalInfoSection(dest.visaInfo, dest.simInfo, dest.bookInAdvance),
+          PhrasebookSection(dest.phrasebook),
+        ].filter(Boolean)
+      ),
+    ];
+  });
 
   const metaRow = h(View, { key: "meta", style: styles.metaRow }, [
     h(View, { key: "days", style: styles.metaItem }, [
@@ -594,26 +645,19 @@ export default function TripPdfDocument({ trip }) {
   // Page's children with no further wrapping.
   return h(
     Document,
-    { title: `AbhiTrip - ${input?.destination || "Trip"}` },
+    { title: `AbhiTrip - ${input?.destinationLabel || input?.destination || "Trip"}` },
     h(Page, { size: "A4", style: styles.page, wrap: true }, [
-      h(Text, { key: "title", style: styles.destinationTitle }, input?.destination),
+      h(Text, { key: "title", style: styles.destinationTitle }, input?.destinationLabel || input?.destination),
       h(
         Text,
         { key: "tagline", style: styles.tagline },
         `${input?.days} days of plans, packed and mapped out.`
       ),
       metaRow,
-      AttractionsSection(attractions),
-      WeatherSection(weather),
+      ...destinationSections,
       ItinerarySection(itinerary),
       FlightsSection(flights, currency),
-      CurrencySection(currencyInfo, currency),
-      BewareOfSection(bewareOf),
-      EmergencyInfoSection(emergencyInfo),
-      PracticalInfoSection(visaInfo, simInfo, bookInAdvance),
-      PhrasebookSection(phrasebook),
-      FoodSection(food),
-      ShoppingSection(shopping),
+      InterCityLegsSection(interCityLegs, currency),
       PackingListSection(packingList),
       PlannerSection(planner, currency),
       footer,

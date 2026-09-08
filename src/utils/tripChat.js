@@ -14,13 +14,10 @@ const MAX_HISTORY_MESSAGES = 8;
  * ask about.
  */
 function buildTripContext(trip) {
-  const {
-    input, itinerary, packingList, planner, attractions,
-    flights, food, shopping, currencyInfo, bewareOf,
-  } = trip;
+  const { input, itinerary, packingList, planner, flights, interCityLegs, perDestination = [] } = trip;
 
   const lines = [];
-  lines.push(`Destination: ${input?.destination}`);
+  lines.push(`Destination(s): ${input?.destinationLabel || input?.destination}`);
   lines.push(
     `${input?.days} days, ${input?.pax} traveler(s), ${input?.tripType || "general"} trip, departing from ${input?.departureCity || "unspecified"}.`
   );
@@ -42,44 +39,72 @@ function buildTripContext(trip) {
 
   if (flights) {
     lines.push(
-      `Flights: ${flights.departureCity} -> ${flights.destination}. Outbound approx ${flights.outbound?.priceRangeLow}-${flights.outbound?.priceRangeHigh} ${input?.currency}/person, return approx ${flights.returnFlight?.priceRangeLow}-${flights.returnFlight?.priceRangeHigh} ${input?.currency}/person. ${flights.bookingTip || ""}`
+      `Flights: ${flights.departureCity} -> ${flights.destination}${flights.returnFromDestination && flights.returnFromDestination !== flights.destination ? ` (returning from ${flights.returnFromDestination})` : ""}. Outbound approx ${flights.outbound?.priceRangeLow}-${flights.outbound?.priceRangeHigh} ${input?.currency}/person, return approx ${flights.returnFlight?.priceRangeLow}-${flights.returnFlight?.priceRangeHigh} ${input?.currency}/person. ${flights.bookingTip || ""}`
+    );
+  }
+
+  if (interCityLegs?.length) {
+    lines.push(
+      "Inter-city transport between stops: " +
+        interCityLegs
+          .map((l) => `${l.from} -> ${l.to} by ${l.mode}, approx ${l.priceRangeLow}-${l.priceRangeHigh} ${input?.currency}/person, ~${l.typicalDurationHours}h. ${l.notes || ""}`)
+          .join(" | ")
     );
   }
 
   if (itinerary?.length) {
     lines.push("Itinerary:");
     itinerary.forEach((day) => {
-      lines.push(`Day ${day.day}: ${day.title}`);
+      lines.push(`Day ${day.day} (${day.destination}): ${day.title}`);
       (day.activities || []).forEach((act) => {
         lines.push(`  - ${act.time}: ${act.activity}${act.notes ? ` (${act.notes})` : ""}`);
       });
     });
   }
 
-  if (attractions?.length) {
-    lines.push(
-      "Attractions: " +
-        attractions.map((a) => `${a.name} (${a.category}) - ${a.description}`).join(" | ")
-    );
-  }
+  // Everything scoped to a single stop (attractions, food, shopping,
+  // currency, safety) is described once per destination — for a single-
+  // destination trip perDestination has exactly one entry, so this reads
+  // the same as before this feature existed, just without a repeated
+  // "Destination: X" prefix on every line.
+  perDestination.forEach((dest) => {
+    if (dest.failed) return;
+    const label = perDestination.length > 1 ? ` in ${dest.destination}` : "";
 
-  if (food) {
-    lines.push(
-      "Local dishes: " + (food.dishes || []).map((d) => d.name).join(", ")
-    );
-    if (food.mealCostEstimate) {
-      const m = food.mealCostEstimate;
+    if (dest.attractions?.length) {
       lines.push(
-        `Meal costs per person (budget/mid-range): breakfast ${m.breakfast?.budget}/${m.breakfast?.midRange}, lunch ${m.lunch?.budget}/${m.lunch?.midRange}, dinner ${m.dinner?.budget}/${m.dinner?.midRange} ${m.currency}. ${m.notes || ""}`
+        `Attractions${label}: ` +
+          dest.attractions.map((a) => `${a.name} (${a.category}) - ${a.description}`).join(" | ")
       );
     }
-  }
 
-  if (shopping?.length) {
-    lines.push(
-      "Shopping: " + shopping.map((s) => `${s.item} (${s.priceRange})`).join(", ")
-    );
-  }
+    if (dest.food) {
+      lines.push(`Local dishes${label}: ` + (dest.food.dishes || []).map((d) => d.name).join(", "));
+      if (dest.food.mealCostEstimate) {
+        const m = dest.food.mealCostEstimate;
+        lines.push(
+          `Meal costs per person${label} (budget/mid-range): breakfast ${m.breakfast?.budget}/${m.breakfast?.midRange}, lunch ${m.lunch?.budget}/${m.lunch?.midRange}, dinner ${m.dinner?.budget}/${m.dinner?.midRange} ${m.currency}. ${m.notes || ""}`
+        );
+      }
+    }
+
+    if (dest.shopping?.length) {
+      lines.push(`Shopping${label}: ` + dest.shopping.map((s) => `${s.item} (${s.priceRange})`).join(", "));
+    }
+
+    if (dest.currencyInfo?.isForeign) {
+      lines.push(
+        `Currency${label}: local currency is ${dest.currencyInfo.localCurrencyName} (${dest.currencyInfo.localCurrencyCode}), approx 1 ${input?.currency} = ${dest.currencyInfo.oneUnitOfInputCurrencyInLocal} ${dest.currencyInfo.localCurrencyCode}. Recommendation: ${dest.currencyInfo.recommendation}. ${dest.currencyInfo.recommendationReason || ""}`
+      );
+    }
+
+    if (dest.bewareOf?.length) {
+      lines.push(
+        `Things to watch out for${label}: ` +
+          dest.bewareOf.map((b) => `${b.title} - ${b.description}`).join(" | ")
+      );
+    }
+  });
 
   if (packingList) {
     const allItems = [
@@ -90,19 +115,6 @@ function buildTripContext(trip) {
       ...(packingList.misc || []),
     ];
     if (allItems.length) lines.push("Packing list: " + allItems.join(", "));
-  }
-
-  if (currencyInfo?.isForeign) {
-    lines.push(
-      `Currency: local currency is ${currencyInfo.localCurrencyName} (${currencyInfo.localCurrencyCode}), approx 1 ${input?.currency} = ${currencyInfo.oneUnitOfInputCurrencyInLocal} ${currencyInfo.localCurrencyCode}. Recommendation: ${currencyInfo.recommendation}. ${currencyInfo.recommendationReason || ""}`
-    );
-  }
-
-  if (bewareOf?.length) {
-    lines.push(
-      "Things to watch out for: " +
-        bewareOf.map((b) => `${b.title} - ${b.description}`).join(" | ")
-    );
   }
 
   return lines.join("\n");

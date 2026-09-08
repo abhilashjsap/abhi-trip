@@ -66,7 +66,7 @@ export default {
 
     try {
       const buffer = await renderToBuffer(h(TripPdfDocument, { trip }));
-      const filename = `AbhiTrip-${(trip.input?.destination || "trip").replace(/\s+/g, "-")}.pdf`;
+      const filename = `AbhiTrip-${(trip.input?.destinationLabel || trip.input?.destination || "trip").replace(/\s+/g, "-")}.pdf`;
 
       return new Response(buffer, {
         status: 200,

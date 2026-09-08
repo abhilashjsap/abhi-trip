@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { estimateBudgetForCategory, BUDGET_CATEGORIES } from "../utils/tripAI";
+import { estimateBudgetForCategory, estimateMultiStopBudgetForCategory, BUDGET_CATEGORIES } from "../utils/tripAI";
 import { RateLimitError } from "../utils/gemini";
 import DestinationAutocomplete from "./DestinationAutocomplete";
+import DestinationsField from "./DestinationsField";
 import logger from "../utils/logger";
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD"];
@@ -15,23 +16,26 @@ const TRIP_TYPES = [
 ];
 
 const initialState = {
-  destination: "",
   departureCity: "",
   departureDate: "",
   budget: "",
   currency: "INR",
   pax: 1,
-  days: 3,
   flightsIncluded: false,
   tripType: "",
 };
 
 export default function TripForm({ onSubmit, loading }) {
   const [form, setForm] = useState(initialState);
+  const [destinations, setDestinations] = useState([{ name: "", days: 3 }]);
+  const [legEstimates, setLegEstimates] = useState([]);
   const [error, setError] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [budgetFromCategory, setBudgetFromCategory] = useState(false);
   const [estimating, setEstimating] = useState(false);
+
+  const isMulti = destinations.length > 1;
+  const totalDays = destinations.reduce((sum, d) => sum + (Number(d.days) || 0), 0);
 
   const handleChange = (field) => (e) => {
     const value =
@@ -52,9 +56,9 @@ export default function TripForm({ onSubmit, loading }) {
   };
 
   const canEstimate =
-    form.destination.trim() &&
-    form.days &&
-    Number(form.days) >= 1 &&
+    destinations.length > 0 &&
+    destinations.every((d) => d.name.trim()) &&
+    totalDays >= destinations.length &&
     form.pax &&
     Number(form.pax) >= 1 &&
     (!form.flightsIncluded || form.departureCity.trim());
@@ -65,7 +69,7 @@ export default function TripForm({ onSubmit, loading }) {
 
     if (!canEstimate) {
       setError(
-        "Fill in destination, travelers, days" +
+        "Fill in destination(s), travelers, days" +
           (form.flightsIncluded ? ", and departure city" : "") +
           " first, so we can estimate a realistic amount."
       );
@@ -74,15 +78,24 @@ export default function TripForm({ onSubmit, loading }) {
 
     setEstimating(true);
     try {
-      const result = await estimateBudgetForCategory({
-        destination: form.destination,
-        departureCity: form.departureCity,
-        currency: form.currency,
-        pax: Number(form.pax),
-        days: Number(form.days),
-        flightsIncluded: form.flightsIncluded,
-        budgetCategory: categoryKey,
-      });
+      const result = isMulti
+        ? await estimateMultiStopBudgetForCategory({
+            destinations,
+            departureCity: form.departureCity,
+            currency: form.currency,
+            pax: Number(form.pax),
+            flightsIncluded: form.flightsIncluded,
+            budgetCategory: categoryKey,
+          })
+        : await estimateBudgetForCategory({
+            destination: destinations[0].name,
+            departureCity: form.departureCity,
+            currency: form.currency,
+            pax: Number(form.pax),
+            days: totalDays,
+            flightsIncluded: form.flightsIncluded,
+            budgetCategory: categoryKey,
+          });
 
       if (result.estimatedBudget) {
         setForm((prev) => ({ ...prev, budget: String(result.estimatedBudget) }));
@@ -106,8 +119,8 @@ export default function TripForm({ onSubmit, loading }) {
     e.preventDefault();
     setError("");
 
-    if (!form.destination.trim()) {
-      setError("Please enter a destination.");
+    if (destinations.length === 0 || destinations.some((d) => !d.name.trim())) {
+      setError("Please enter a destination for every stop, or remove the empty one.");
       return;
     }
     if (form.flightsIncluded && !form.departureCity.trim()) {
@@ -122,8 +135,8 @@ export default function TripForm({ onSubmit, loading }) {
       setError("Number of travelers must be at least 1.");
       return;
     }
-    if (!form.days || Number(form.days) < 1) {
-      setError("Trip must be at least 1 day.");
+    if (destinations.some((d) => !d.days || Number(d.days) < 1)) {
+      setError("Each stop needs at least 1 day.");
       return;
     }
     if (!form.tripType) {
@@ -131,11 +144,20 @@ export default function TripForm({ onSubmit, loading }) {
       return;
     }
 
+    const normalizedDestinations = destinations.map((d) => ({
+      name: d.name.trim(),
+      days: Number(d.days),
+    }));
+
     onSubmit({
       ...form,
+      destination: normalizedDestinations[0].name,
+      destinations: normalizedDestinations,
+      destinationLabel: normalizedDestinations.map((d) => d.name).join(" → "),
+      estimatedLegs: isMulti && legEstimates.length ? legEstimates : undefined,
       budget: Number(form.budget),
       pax: Number(form.pax),
-      days: Number(form.days),
+      days: totalDays,
       budgetFromCategory,
       budgetCategory: budgetFromCategory ? selectedCategory : null,
     });
@@ -143,13 +165,11 @@ export default function TripForm({ onSubmit, loading }) {
 
   return (
     <form onSubmit={handleSubmit} className="trip-form">
-      <DestinationAutocomplete
-        id="destination"
-        label="Destination"
-        placeholder="e.g. Goa, India"
-        value={form.destination}
-        onChange={handleFieldValue("destination")}
+      <DestinationsField
+        destinations={destinations}
+        onChange={setDestinations}
         disabled={loading}
+        onLegsChange={setLegEstimates}
       />
 
       <div className="form-row">
@@ -165,18 +185,22 @@ export default function TripForm({ onSubmit, loading }) {
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="days">Days</label>
-          <input
-            id="days"
-            type="number"
-            min="1"
-            max="30"
-            value={form.days}
-            onChange={handleChange("days")}
-            disabled={loading}
-          />
-        </div>
+        {!isMulti && (
+          <div className="form-group">
+            <label htmlFor="days">Days</label>
+            <input
+              id="days"
+              type="number"
+              min="1"
+              max="30"
+              value={destinations[0]?.days ?? 3}
+              onChange={(e) =>
+                setDestinations([{ ...destinations[0], days: e.target.value }])
+              }
+              disabled={loading}
+            />
+          </div>
+        )}
       </div>
 
       <div className="form-group">

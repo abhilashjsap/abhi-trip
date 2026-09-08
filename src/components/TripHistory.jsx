@@ -44,7 +44,7 @@ export default function TripHistory({ onSelect, onClose, onRefresh }) {
             )}
             <div className="trip-history-info">
               <span className="trip-history-destination">
-                {trip.input?.destination}
+                {trip.input?.destinationLabel || trip.input?.destination}
               </span>
               <span className="trip-history-meta">
                 {trip.input?.days} days · {trip.input?.pax} traveler

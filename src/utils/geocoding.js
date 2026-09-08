@@ -137,12 +137,16 @@ export function geocodeDestination(destination) {
  * Unsplash, Nominatim's usage policy caps free public use at ~1 request per
  * second, so a batch of 5-8 attractions takes a few seconds. Meant to run
  * client-side after the trip is already showing, not blocking generation.
+ * Each attraction geocodes against ITS OWN `.destination` field when
+ * present (a multi-destination trip's attractions each belong to a
+ * specific stop) — the `destination` param is only a fallback for
+ * attractions without one (a single-destination trip's items).
  * @returns {Promise<Array<{lat: number, lng: number} | null>>} same order/length as input
  */
 export async function geocodeAttractions(attractions, destination) {
   const results = [];
   for (const attraction of attractions) {
-    results.push(await geocodeAttraction(attraction.name, destination));
+    results.push(await geocodeAttraction(attraction.name, attraction.destination || destination));
     // Stay comfortably under Nominatim's ~1 req/sec policy.
     await sleep(1100);
   }

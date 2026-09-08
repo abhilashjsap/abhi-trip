@@ -1,3 +1,5 @@
+import { normalizeTripShape } from "./tripStorage";
+
 /**
  * Uploads a trip to the server (api/share.js, backed by Upstash Redis) and
  * returns a short id. The trip is stored for 90 days.
@@ -33,5 +35,5 @@ export async function loadSharedTrip(id) {
     throw new Error(data?.error || "Couldn't load this shared trip.");
   }
 
-  return data.trip;
+  return normalizeTripShape(data.trip);
 }

@@ -14,6 +14,7 @@ import {
   loadCachedTrip,
   clearCachedTrip,
   addTripToHistory,
+  normalizeTripShape,
 } from "./utils/tripStorage";
 import logger from "./utils/logger";
 import "./App.css";
@@ -82,7 +83,11 @@ export default function App() {
     setLastInput(formData);
     setStreamPreview("");
     try {
-      const result = await generateTripPlan(formData, setStreamPreview);
+      // Normalized here (not just on load) so a freshly-generated single-
+      // destination trip — which still has the flat, pre-multi-destination
+      // shape — carries the same {destinations, perDestination} shape as a
+      // multi-stop trip the moment it's created, not just after a reload.
+      const result = normalizeTripShape(await generateTripPlan(formData, setStreamPreview));
       setTrip(result);
       cacheCurrentTrip(result);
       addTripToHistory(result);

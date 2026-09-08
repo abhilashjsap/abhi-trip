@@ -41,12 +41,55 @@ function writeStoredJson(key, value) {
   }
 }
 
+/**
+ * Trips generated before the multi-destination feature have no
+ * `destinations` array — everything (attractions, weather, food, shopping,
+ * currencyInfo, bewareOf, emergencyInfo, visaInfo, simInfo, phrasebook,
+ * bookInAdvance) sits flat at the top level of the trip object, for one
+ * implicit destination (`trip.input.destination`). Normalizing old trips
+ * into the new `{destinations, perDestination}` shape on load means
+ * TripResult.jsx and TripPdfDocument.js only ever need to handle one shape.
+ * A no-op (returns the trip as-is) for anything already new-shape or falsy.
+ */
+export function normalizeTripShape(trip) {
+  if (!trip || trip.destinations) return trip;
+
+  const destinationName = trip.input?.destination;
+
+  return {
+    ...trip,
+    destinations: [{ name: destinationName, days: trip.input?.days }],
+    perDestination: [
+      {
+        destination: destinationName,
+        attractions: trip.attractions || [],
+        weather: trip.weather || null,
+        food: trip.food || null,
+        shopping: trip.shopping || [],
+        currencyInfo: trip.currencyInfo || null,
+        bewareOf: trip.bewareOf || null,
+        emergencyInfo: trip.emergencyInfo || null,
+        visaInfo: trip.visaInfo || null,
+        simInfo: trip.simInfo || null,
+        phrasebook: trip.phrasebook || null,
+        bookInAdvance: trip.bookInAdvance || null,
+      },
+    ],
+    // Old itinerary days have no `destination` field — backfill it since
+    // there's only ever been one destination for an old trip.
+    itinerary: (trip.itinerary || []).map((day) => ({
+      ...day,
+      destination: day.destination || destinationName,
+    })),
+  };
+}
+
 export function cacheCurrentTrip(trip) {
   writeStoredJson(CURRENT_TRIP_KEY, trip);
 }
 
 export function loadCachedTrip() {
-  return readStoredJson(CURRENT_TRIP_KEY, null);
+  return normalizeTripShape(readStoredJson(CURRENT_TRIP_KEY, null));
 }
 
 export function clearCachedTrip() {
@@ -59,7 +102,7 @@ export function clearCachedTrip() {
 
 export function getTripHistory() {
   const history = readStoredJson(TRIP_HISTORY_KEY, []);
-  return Array.isArray(history) ? history : [];
+  return Array.isArray(history) ? history.map(normalizeTripShape) : [];
 }
 
 export function addTripToHistory(trip) {

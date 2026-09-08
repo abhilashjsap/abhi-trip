@@ -19,7 +19,7 @@ function formatDeparture(dateStr) {
 export default function TripStub({ input, onReset }) {
   if (!input) return null;
 
-  const { destination, days, pax, budget, currency, flightsIncluded, departureDate } = input;
+  const { destination, destinationLabel, days, pax, budget, currency, flightsIncluded, departureDate } = input;
 
   return (
     <div className="trip-stub">
@@ -27,7 +27,7 @@ export default function TripStub({ input, onReset }) {
         <div className="stub-row">
           <div>
             <span className="stub-label">Destination</span>
-            <span className="stub-value stub-destination">{destination}</span>
+            <span className="stub-value stub-destination">{destinationLabel || destination}</span>
           </div>
           <div>
             <span className="stub-label">Duration</span>

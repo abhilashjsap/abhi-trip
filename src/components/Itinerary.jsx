@@ -65,8 +65,16 @@ export default function Itinerary({
       </div>
 
       <div className="timeline">
-        {itinerary.map((day, dayIdx) => (
-          <div key={day.day} className="timeline-day">
+        {itinerary.map((day, dayIdx) => {
+          const showDestinationDivider =
+            day.destination && day.destination !== itinerary[dayIdx - 1]?.destination;
+
+          return (
+          <div key={day.day} className="timeline-day-group">
+            {showDestinationDivider && (
+              <div className="timeline-destination-divider">{day.destination}</div>
+            )}
+          <div className="timeline-day">
             <div className="timeline-marker">
               <span className="timeline-day-num">{String(day.day).padStart(2, "0")}</span>
             </div>
@@ -161,7 +169,9 @@ export default function Itinerary({
               </ul>
             </div>
           </div>
-        ))}
+          </div>
+          );
+        })}
       </div>
     </section>
   );
