@@ -78,6 +78,13 @@ function buildTripContext(trip) {
       );
     }
 
+    if (dest.accommodation) {
+      const a = dest.accommodation;
+      lines.push(
+        `Hotel tariff${label}: ${a.tier}, approx ${a.pricePerNightLow}-${a.pricePerNightHigh} ${input?.currency} ${a.unit || "per room per night"}.${a.areaRecommendation ? ` ${a.areaRecommendation}` : ""}`
+      );
+    }
+
     if (dest.food) {
       lines.push(`Local dishes${label}: ` + (dest.food.dishes || []).map((d) => d.name).join(", "));
       if (dest.food.mealCostEstimate) {

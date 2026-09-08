@@ -63,6 +63,7 @@ export function normalizeTripShape(trip) {
       {
         destination: destinationName,
         attractions: trip.attractions || [],
+        accommodation: trip.accommodation || null,
         weather: trip.weather || null,
         food: trip.food || null,
         shopping: trip.shopping || [],

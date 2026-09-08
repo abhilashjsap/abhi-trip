@@ -3,6 +3,7 @@ import Itinerary from "./Itinerary";
 import PackingList from "./PackingList";
 import TripPlanner from "./TripPlanner";
 import Attractions from "./Attractions";
+import Accommodation from "./Accommodation";
 import Flights from "./Flights";
 import InterCityLegs from "./InterCityLegs";
 import FoodAndDrink from "./FoodAndDrink";
@@ -268,6 +269,12 @@ export default function TripResult({
                     onRegenerate={readOnly ? undefined : () => handleRegenerateSection("weather", dest.destination)}
                     regenerating={regeneratingKey === `weather-${dest.destination}`}
                   />
+                  <Accommodation
+                    accommodation={dest.accommodation}
+                    currency={input?.currency}
+                    onRegenerate={readOnly ? undefined : () => handleRegenerateSection("accommodation", dest.destination)}
+                    regenerating={regeneratingKey === `accommodation-${dest.destination}`}
+                  />
                   <CurrencyInfo currencyInfo={dest.currencyInfo} currency={input?.currency} />
                   <BewareOf
                     bewareOf={dest.bewareOf}
@@ -312,6 +319,12 @@ export default function TripResult({
               departureDate={input?.departureDate}
               onRegenerate={readOnly ? undefined : () => handleRegenerateSection("weather")}
               regenerating={regeneratingKey === "weather"}
+            />
+            <Accommodation
+              accommodation={perDestination[0]?.accommodation}
+              currency={input?.currency}
+              onRegenerate={readOnly ? undefined : () => handleRegenerateSection("accommodation")}
+              regenerating={regeneratingKey === "accommodation"}
             />
             <CurrencyInfo currencyInfo={perDestination[0]?.currencyInfo} currency={input?.currency} />
             <BewareOf

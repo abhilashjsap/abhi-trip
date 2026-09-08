@@ -110,6 +110,22 @@ const flightLegSchema = {
   required: ["priceRangeLow", "priceRangeHigh", "typicalAirlines", "notes"],
 };
 
+// Per-night hotel tariff for the trip's chosen comfort tier — destination-
+// scoped (hotel prices in Paris and Kuala Lumpur have nothing to do with
+// each other), same as attractions/food/currencyInfo.
+export const accommodationSchema = {
+  type: "OBJECT",
+  properties: {
+    tier: { type: "STRING", maxLength: "80" },
+    pricePerNightLow: { type: "NUMBER" },
+    pricePerNightHigh: { type: "NUMBER" },
+    unit: { type: "STRING", maxLength: "40" },
+    areaRecommendation: { type: "STRING", nullable: true, maxLength: "200" },
+    notes: { type: "STRING", nullable: true, maxLength: "300" },
+  },
+  required: ["tier", "pricePerNightLow", "pricePerNightHigh", "unit"],
+};
+
 const flightsSchema = {
   type: "OBJECT",
   nullable: true,
@@ -381,6 +397,7 @@ export const TRIP_PLAN_SCHEMA = {
     planner: plannerSchema,
     attractions: { type: "ARRAY", items: attractionSchema },
     flights: flightsSchema,
+    accommodation: accommodationSchema,
     food: foodSchema,
     shopping: { type: "ARRAY", items: shoppingItemSchema },
     currencyInfo: currencyInfoSchema,
@@ -393,6 +410,7 @@ export const TRIP_PLAN_SCHEMA = {
     "packingList",
     "planner",
     "attractions",
+    "accommodation",
     "food",
     "shopping",
     "currencyInfo",
@@ -416,6 +434,7 @@ export const PER_DESTINATION_SCHEMA = {
   properties: {
     weather: weatherSchema,
     attractions: { type: "ARRAY", items: attractionSchema },
+    accommodation: accommodationSchema,
     food: foodSchema,
     shopping: { type: "ARRAY", items: shoppingItemSchema },
     currencyInfo: currencyInfoSchema,
@@ -425,6 +444,7 @@ export const PER_DESTINATION_SCHEMA = {
   required: [
     "weather",
     "attractions",
+    "accommodation",
     "food",
     "shopping",
     "currencyInfo",

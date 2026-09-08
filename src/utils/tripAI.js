@@ -8,6 +8,7 @@ import {
   TRIP_PLAN_SCHEMA,
   PER_DESTINATION_SCHEMA,
   ITINERARY_AND_BUDGET_SCHEMA,
+  accommodationSchema,
   attractionSchema,
   weatherSchema,
   foodSchema,
@@ -410,6 +411,14 @@ Respond ONLY with a JSON object in this exact shape:
   }`
       : "null"
   },
+  "accommodation": {
+    "tier": "e.g. 3-star hotel, boutique guesthouse, hostel dorm — matching the trip's comfort level",
+    "pricePerNightLow": 0,
+    "pricePerNightHigh": 0,
+    "unit": "per room per night",
+    "areaRecommendation": "1 sentence naming a good area/neighborhood to stay in ${destination} and why, or null",
+    "notes": "1-2 sentences, e.g. what this tier typically includes, when to book, seasonal price swings, or null"
+  },
   "food": {
     "dishes": [
       { "name": "Dish name", "type": "Main | Snack | Dessert | Street food", "description": "1-2 sentences on what it is and why it's worth trying" }
@@ -458,6 +467,9 @@ Rules:
 - If flights are included, the "Flights" category must cover the international outbound+return fares for all ${pax} traveler(s) AND the cost of any domestic/connecting flight the itinerary itself includes between cities (e.g. a multi-city route that flies from one place to another mid-trip) — don't silently drop that leg from the budget just because it isn't in outbound/returnFlight.
 - The "Activities" category must reflect realistic, typical entrance/ticket/tour prices for the SPECIFIC paid attractions and excursions this itinerary actually includes (e.g. a cable car, a day cruise with lunch, a paid museum), multiplied by ${pax} traveler(s) — not a generic leftover percentage. A day likely to include one or more marquee paid excursions should visibly cost more per person than a day of free walking/sightseeing.
 - The "Transport" category should cover realistic costs for the specific transfers this itinerary describes (private transfers, intercity minibus/car, in-city rides) for a group of ${pax}, not just a token amount.
+- accommodation must reflect the SAME hotel tier the itinerary/budget actually assumes${
+    categoryInfo ? ` (${categoryInfo.tier})` : ""
+  } — pricePerNightLow/High is PER ROOM (not per person), realistic for ${destination}, and consistent with budgetBreakdown's "Accommodation" total (roughly pricePerNight × rooms needed for ${pax} traveler(s) × ${Math.max(days - 1, 1)} night(s)).
 - If flights are excluded, omit or zero the "Flights" category and set "flights" to null.
 - itinerary must have exactly ${days} day entries, with activity choices suited to ${tripTypeContext}. Every day's "destination" field must be exactly "${destination}".
 - attractions should list 5-8 real, well-known places in ${destination} — mix of categories, not all the same type.
@@ -918,8 +930,9 @@ Rules:
  * cross-cutting across the whole route.
  */
 function buildPerDestinationPrompt(destinationName, formData) {
-  const { currency, pax, tripType } = formData;
+  const { currency, pax, tripType, budgetCategory } = formData;
   const tripTypeContext = TRIP_TYPE_LABELS[tripType] || "a general traveler";
+  const categoryInfo = BUDGET_CATEGORIES[budgetCategory];
 
   return `
 This is ONE STOP within a multi-destination trip — give real, practical
@@ -927,6 +940,7 @@ content for THIS destination only: ${destinationName}. Other stops on the
 trip are handled separately; don't reference them.
 - Travelers: ${pax}
 - Trip type: this trip is for ${tripTypeContext}. Tailor attraction/food/shopping picks to suit this group.
+- Comfort level: ${categoryInfo ? `a "${categoryInfo.label}" trip — ${categoryInfo.tier}` : "a typical range appropriate for this trip's overall budget"}.
 - Prices should be in ${currency}.
 
 Respond ONLY with a JSON object in this exact shape:
@@ -948,6 +962,14 @@ Respond ONLY with a JSON object in this exact shape:
       "estimatedDuration": "e.g. 2-3 hours"
     }
   ],
+  "accommodation": {
+    "tier": "e.g. 3-star hotel, boutique guesthouse, hostel dorm — matching the comfort level above",
+    "pricePerNightLow": 0,
+    "pricePerNightHigh": 0,
+    "unit": "per room per night",
+    "areaRecommendation": "1 sentence naming a good area/neighborhood to stay in ${destinationName} and why, or null",
+    "notes": "1-2 sentences, e.g. what this tier typically includes, when to book, seasonal price swings, or null"
+  },
   "food": {
     "dishes": [
       { "name": "Dish name", "type": "Main | Snack | Dessert | Street food", "description": "1-2 sentences on what it is and why it's worth trying" }
@@ -994,6 +1016,7 @@ Rules:
 - Base weather on ${destinationName}'s real typical climate — historical seasonal averages, not a live forecast.
 - attractions should list 5-8 real, well-known places in ${destinationName} — mix of categories, not all the same type.
 - historicalSignificance must be factually grounded (real dates, rulers, events) where genuine, or null otherwise — never invent history.
+- accommodation.pricePerNightLow/High is PER ROOM (not per person), realistic for ${destinationName} at the comfort level above, in ${currency}.
 - food.dishes should list 5-8 real, well-known local dishes/specialties actually associated with ${destinationName}.
 - food.beverages should list 3-5 real local drinks.
 - mealCostEstimate amounts are PER PERSON, per meal, in ${currency}, realistic for ${destinationName}'s cost of living.
@@ -1163,6 +1186,7 @@ async function generatePerDestinationResult(destinationName, formData) {
       destination: destinationName,
       failed: false,
       heroImage: hero,
+      accommodation: parsed.accommodation,
       weather: parsed.weather,
       attractions: attractionsWithImages,
       food: parsed.food
@@ -1187,6 +1211,7 @@ async function generatePerDestinationResult(destinationName, formData) {
       failed: true,
       heroImage: null,
       weather: null,
+      accommodation: null,
       attractions: [],
       food: null,
       shopping: [],
@@ -1323,6 +1348,18 @@ Every field must contain real, specific content about ${destination} — never p
 Give realistic typical seasonal weather for ${destination}, exactly 12 months (January through December), based on real historical climate averages — not a live forecast.
 rating reflects how good that month is for tourism (weather + crowds + typical conditions) — "best" for the ideal window, "avoid" for genuinely bad months (monsoon, extreme heat/cold), "good"/"okay" in between.
 bestFor should be genuinely month-specific (a real festival/event, a seasonal fruit/dish, a seasonal activity) — don't repeat generic sightseeing advice across months. Use null if nothing distinct applies that month.
+`.trim();
+    },
+  },
+  accommodation: {
+    schema: accommodationSchema,
+    buildPrompt: (trip, formData, destinationName) => {
+      const destination = destinationName || formData.destination;
+      const categoryInfo = BUDGET_CATEGORIES[formData.budgetCategory];
+      return `
+Give a realistic per-night hotel tariff for ${destination}, at ${
+        categoryInfo ? `a "${categoryInfo.label}" comfort level: ${categoryInfo.tier}` : "a typical range appropriate for this trip's overall budget"
+      }. pricePerNightLow/High is PER ROOM (not per person), in ${formData.currency}. Name a good area/neighborhood to stay, and note what this tier typically includes.
 `.trim();
     },
   },

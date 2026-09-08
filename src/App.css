@@ -1712,6 +1712,64 @@ button:disabled {
   background: var(--rust);
 }
 
+/* ---------- Accommodation ---------- */
+
+.accommodation-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.accommodation-tier {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rust);
+}
+
+.accommodation-price {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.accommodation-unit {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.accommodation-area {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+}
+
+.accommodation-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sage);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.accommodation-area p,
+.accommodation-notes {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* ---------- Currency & exchange ---------- */
 
 .currency-card {

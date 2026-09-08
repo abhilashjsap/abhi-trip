@@ -273,6 +273,27 @@ function AttractionsSection(attractions) {
   );
 }
 
+function AccommodationSection(accommodation, currency) {
+  if (!accommodation) return null;
+  return Section("accommodation", "Where to stay", "Hotel tariff", [
+    h(
+      Text,
+      { key: "tier", style: [styles.cardTitle, { marginBottom: 4 }] },
+      accommodation.tier
+    ),
+    h(
+      Text,
+      { key: "price", style: [styles.bodyText, { marginBottom: 6 }] },
+      `${money(accommodation.pricePerNightLow, currency)} - ${money(accommodation.pricePerNightHigh, currency)}` +
+        (accommodation.unit ? `, ${accommodation.unit}` : "")
+    ),
+    accommodation.areaRecommendation &&
+      h(Text, { key: "area", style: styles.mutedText }, accommodation.areaRecommendation),
+    accommodation.notes &&
+      h(Text, { key: "notes", style: [styles.mutedText, { marginTop: 4 }] }, accommodation.notes),
+  ]);
+}
+
 function WeatherSection(weather) {
   if (!weather?.months?.length) return null;
   return Section("weather", "When to go", "Weather by month", [
@@ -596,6 +617,7 @@ export default function TripPdfDocument({ trip }) {
         [
           isMulti && h(Text, { key: "heading", style: styles.destinationHeading }, dest.destination),
           AttractionsSection(dest.attractions),
+          AccommodationSection(dest.accommodation, currency),
           WeatherSection(dest.weather),
           FoodSection(dest.food),
           ShoppingSection(dest.shopping),
