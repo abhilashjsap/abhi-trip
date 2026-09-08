@@ -147,13 +147,15 @@ export default function DestinationsField({ destinations, onChange, disabled, on
               </button>
             </div>
 
-            <input
-              type="text"
-              className="destination-chip-name"
+            <DestinationAutocomplete
+              id={`destination-${idx}`}
               value={d.name}
-              onChange={(e) => updateDestination(idx, { name: e.target.value })}
+              onChange={(value) => updateDestination(idx, { name: value })}
               placeholder="e.g. Singapore"
               disabled={disabled}
+              hideLabel
+              wrapperClassName="destination-chip-name-wrap"
+              inputClassName="destination-chip-name"
             />
 
             <div className="destination-chip-days">

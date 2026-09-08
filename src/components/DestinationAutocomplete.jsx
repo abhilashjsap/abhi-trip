@@ -10,6 +10,12 @@ export default function DestinationAutocomplete({
   value,
   onChange,
   disabled,
+  // Lets this be embedded compactly (e.g. inside a destination chip)
+  // without its usual label/form-group spacing, while keeping the same
+  // dropdown/search behavior.
+  hideLabel = false,
+  wrapperClassName = "",
+  inputClassName = "",
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -91,12 +97,18 @@ export default function DestinationAutocomplete({
   }, []);
 
   return (
-    <div className="form-group autocomplete-wrap" ref={wrapperRef}>
-      <label htmlFor={id}>{label}</label>
+    <div
+      className={
+        "autocomplete-wrap" + (hideLabel ? "" : " form-group") + (wrapperClassName ? ` ${wrapperClassName}` : "")
+      }
+      ref={wrapperRef}
+    >
+      {!hideLabel && <label htmlFor={id}>{label}</label>}
       <div className="autocomplete-input-wrap">
         <input
           id={id}
           type="text"
+          className={inputClassName}
           autoComplete="off"
           placeholder={placeholder}
           value={value}
