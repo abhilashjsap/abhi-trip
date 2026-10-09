@@ -9,11 +9,13 @@ import logger from "./logger";
 // publishes fixed numbers on ai.google.dev; check
 // https://aistudio.google.com/rate-limit for this account's live figures.
 //
-// MODEL_FALLBACK (gemini-2.5-flash-lite) has never actually been used live
-// in this app — its real quota is completely unconfirmed. Deliberately NOT
-// guessing upward from third-party estimates here (that's exactly how the
-// old "213 trips left" bug happened) — it stays at the same conservative
-// 20 until a real 429 (or the AI Studio dashboard) gives an actual number.
+// MODEL_FALLBACK (currently gemini-3.5-flash — see gemini.js, the previous
+// gemini-2.5-flash-lite choice 404'd live) has never actually completed a
+// real generation in this app — its quota is completely unconfirmed.
+// Deliberately NOT guessing upward from third-party estimates here (that's
+// exactly how the old "213 trips left" bug happened) — it stays at the
+// same conservative 20 until a real 429 (or the AI Studio dashboard) gives
+// an actual number.
 export const DAILY_REQUEST_LIMIT = {
   [MODEL_LARGE]: 20,
   [MODEL_SMALL]: 20,
