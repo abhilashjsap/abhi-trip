@@ -311,17 +311,28 @@ export async function generateCompletion({
   // Gemini's 503 "model overloaded" errors are explicitly billed as usually
   // temporary, so this gets a bit more patience than a plain network blip:
   // 3 retries with growing backoff (700ms/1400ms/2800ms, ~4.9s total) before
-  // giving up. Mutable (not const): a fallback-model switch grants one extra
-  // slot so the fallback still gets tried even if the quota hit on what
-  // would otherwise have been the last attempt.
+  // giving up. Mutable (not const): a fallback-model switch grants a full
+  // fresh retry budget (see modelSwitchedAtAttempt below) so the fallback
+  // gets a fair shot regardless of how many of the primary's own retries
+  // were already spent by the time it kicks in.
   let maxRetries = 3;
   let lastErr;
   let lastStatus;
   let usedFallback = false;
+  // The outer `attempt` index at the moment of the most recent model
+  // switch (0 if never switched) — lets backoff/retry-budget math for the
+  // CURRENT model start fresh instead of inheriting wherever the previous
+  // model's attempt count left off. Without this, a late switch (primary
+  // exhausted all 4 of its own attempts first) left the fallback with only
+  // 1 attempt before giving up, AND any 503 on that one attempt would use
+  // an already-escalated backoff (700ms * 2^6+ — tens of seconds) instead
+  // of starting back at 700ms.
+  let modelSwitchedAtAttempt = 0;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const attemptOnModel = attempt - modelSwitchedAtAttempt;
     try {
-      logger.debug("Calling Gemini proxy", { model, json, stream: !!onChunk, attempt: attempt + 1 });
+      logger.debug("Calling Gemini proxy", { model, json, stream: !!onChunk, attempt: attemptOnModel + 1 });
       // Counts against the daily quota the moment the request goes out,
       // regardless of how it resolves — a 429/503/guard-rejected attempt
       // still consumed one of the day's 20 allowed calls to this model.
@@ -469,14 +480,16 @@ export async function generateCompletion({
       // 429 means THIS model's daily quota is exhausted — retrying the
       // same model is pointless (it'll just 429 again), but quota is
       // enforced per-model, so a different model has its own separate
-      // allowance. Switch once; +1 to maxRetries guarantees the fallback
-      // actually gets tried even if this 429 landed on what would
-      // otherwise have been the final attempt.
+      // allowance. Switch once, and give it its own full 4-attempt budget
+      // (see modelSwitchedAtAttempt above) rather than whatever's left of
+      // the primary's — it deserves a fair shot regardless of how late the
+      // switch happens to land.
       if (lastStatus === 429 && fallbackModel && !usedFallback) {
         logger.error(`Quota exhausted for ${model}, falling back to ${fallbackModel}:`, err);
         model = fallbackModel;
         usedFallback = true;
-        maxRetries += 1;
+        modelSwitchedAtAttempt = attempt + 1;
+        maxRetries = attempt + 4;
         continue;
       }
 
@@ -488,10 +501,12 @@ export async function generateCompletion({
         // Neither a repetition loop nor an early non-STOP finish is a
         // network/server issue — a fresh sampling attempt is very unlikely
         // to hit the same problem, so there's no reason to wait before
-        // retrying.
-        const backoffMs = isRepetitionLoop || isIncomplete ? 0 : 700 * 2 ** attempt; // 700ms, 1400ms, 2800ms
+        // retrying. Backoff is keyed off attemptOnModel (not the raw outer
+        // attempt) so it restarts at 700ms after a model switch instead of
+        // continuing to escalate from wherever the previous model left off.
+        const backoffMs = isRepetitionLoop || isIncomplete ? 0 : 700 * 2 ** attemptOnModel; // 700ms, 1400ms, 2800ms
         logger.error(
-          `Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${backoffMs}ms:`,
+          `Gemini call failed (${model}, attempt ${attemptOnModel + 1} of ${maxRetries - modelSwitchedAtAttempt + 1}), retrying in ${backoffMs}ms:`,
           err
         );
         await sleep(backoffMs);
@@ -503,15 +518,19 @@ export async function generateCompletion({
       // "high demand" overload errors interleaved with incomplete-response
       // guards, none of which ever let the 429 branch above fire. A demand
       // spike hammering one model's backend doesn't necessarily touch a
-      // different model's, so it's worth one shot on the fallback before
-      // failing outright. Skip for 401/403 — those are API-key/config
-      // problems that would hit the fallback identically, not anything
-      // model-specific.
+      // different model's, so it's worth a full fresh retry budget on the
+      // fallback before failing outright — NOT just one last-chance slot
+      // (confirmed live: a late switch with only 1 slot left meant one
+      // unlucky repetition-loop on the fallback ended the whole generation,
+      // when a 2nd or 3rd fresh attempt would very likely have succeeded).
+      // Skip for 401/403 — those are API-key/config problems that would
+      // hit the fallback identically, not anything model-specific.
       if (isTransient && fallbackModel && !usedFallback && lastStatus !== 401 && lastStatus !== 403) {
         logger.error(`${model} exhausted its retries, falling back to ${fallbackModel}:`, err);
         model = fallbackModel;
         usedFallback = true;
-        maxRetries += 1;
+        modelSwitchedAtAttempt = attempt + 1;
+        maxRetries = attempt + 4;
         continue;
       }
 
