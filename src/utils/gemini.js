@@ -361,4 +361,205 @@ export async function generateCompletion({
           // A NUL byte (never valid in the JSON/text content itself) marks
           // the trailing usage-metadata blob api/gemini.js appends after
           // the real content — see that file for why.
-          const sentinelIdx = piece.indexOf("
+          const sentinelIdx = piece.indexOf("\u0000");
+          if (sentinelIdx !== -1) {
+            const visible = piece.slice(0, sentinelIdx);
+            if (visible) {
+              delta = visible;
+              full += visible;
+              onChunk(full);
+            }
+            try {
+              const tail = JSON.parse(piece.slice(sentinelIdx + 1));
+              usageMetadata = tail.usageMetadata;
+              finishReason = tail.finishReason;
+            } catch {
+              // Best-effort only — losing the usage figure for this call
+              // doesn't affect the actual generated content.
+            }
+          } else {
+            delta = piece;
+            full += piece;
+            onChunk(full);
+          }
+
+          if (
+            (delta && feedRunawayStringGuard(delta)) ||
+            hasRunawayRepetition(full)
+          ) {
+            reader.cancel().catch(() => {});
+            throw new RepetitionLoopError(
+              "The AI got stuck repeating itself instead of finishing the response."
+            );
+          }
+        }
+
+        // Gemini can end the chunk sequence early — hitting maxOutputTokens,
+        // a safety filter, recitation, etc., or (observed live: a 22-char
+        // fragment, just `{"weather": {"months":`) the upstream connection
+        // itself getting cut before Gemini's own final chunk ever arrives —
+        // without ever throwing, leaving `full` a truncated fragment with no
+        // indication anything went wrong. A genuinely complete generation
+        // always ends with an explicit finishReason of STOP; treat anything
+        // else, including it never arriving at all, as incomplete. This can
+        // in principle false-positive if the trailing metadata blob itself
+        // gets split across two stream reads (making finishReason silently
+        // fail to parse even on an otherwise-complete generation), but that
+        // only costs one extra retry — far cheaper than handing truncated
+        // JSON to the caller as if it were done.
+        if (finishReason !== "STOP") {
+          throw new IncompleteResponseError(
+            `The AI stopped before finishing (${finishReason || "no finish signal received"}).`,
+            finishReason
+          );
+        }
+
+        content = full;
+      } else {
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          const err = new Error(data?.error || `Proxy request failed (${res.status})`);
+          err.status = res.status;
+          throw err;
+        }
+
+        content = data?.text;
+        usageMetadata = data?.usageMetadata;
+        finishReason = data?.finishReason;
+
+        // Same class of failure as the streaming path (see the comments
+        // above) can happen here too — regenerateSection/regenerateItinerary
+        // Day use this non-streaming branch and share the exact schemas that
+        // have already produced runaway/repeating fields live.
+        if (
+          content &&
+          (hasRunawayRepetition(content) || createRunawayStringGuard()(content))
+        ) {
+          throw new RepetitionLoopError(
+            "The AI got stuck repeating itself instead of finishing the response."
+          );
+        }
+
+        if (finishReason !== "STOP") {
+          throw new IncompleteResponseError(
+            `The AI stopped before finishing (${finishReason || "no finish signal received"}).`,
+            finishReason
+          );
+        }
+      }
+
+      if (!content) {
+        throw new Error("Empty response from Gemini");
+      }
+
+      if (usageMetadata) {
+        const { promptTokenCount, candidatesTokenCount, totalTokenCount } = usageMetadata;
+        logger.info(
+          `Gemini usage [${model}] — prompt: ${promptTokenCount}, ` +
+            `completion: ${candidatesTokenCount}, total: ${totalTokenCount}`
+        );
+      }
+
+      return content;
+    } catch (err) {
+      lastErr = err;
+      lastStatus = err?.status;
+
+      // 429 means THIS model's daily quota is exhausted — retrying the
+      // same model is pointless (it'll just 429 again), but quota is
+      // enforced per-model, so a different model has its own separate
+      // allowance. Switch once; +1 to maxRetries guarantees the fallback
+      // actually gets tried even if this 429 landed on what would
+      // otherwise have been the final attempt.
+      if (lastStatus === 429 && fallbackModel && !usedFallback) {
+        logger.error(`Quota exhausted for ${model}, falling back to ${fallbackModel}:`, err);
+        model = fallbackModel;
+        usedFallback = true;
+        maxRetries += 1;
+        continue;
+      }
+
+      const isRepetitionLoop = err instanceof RepetitionLoopError;
+      const isIncomplete = err instanceof IncompleteResponseError;
+      const isTransient = isRepetitionLoop || isIncomplete || isRetryableError(lastStatus);
+
+      if (attempt < maxRetries && isTransient) {
+        // Neither a repetition loop nor an early non-STOP finish is a
+        // network/server issue — a fresh sampling attempt is very unlikely
+        // to hit the same problem, so there's no reason to wait before
+        // retrying.
+        const backoffMs = isRepetitionLoop || isIncomplete ? 0 : 700 * 2 ** attempt; // 700ms, 1400ms, 2800ms
+        logger.error(
+          `Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${backoffMs}ms:`,
+          err
+        );
+        await sleep(backoffMs);
+        continue;
+      }
+
+      // The primary model burned through all its own retries without ever
+      // giving a clean quota signal (429) — observed live as a run of 503
+      // "high demand" overload errors interleaved with incomplete-response
+      // guards, none of which ever let the 429 branch above fire. A demand
+      // spike hammering one model's backend doesn't necessarily touch a
+      // different model's, so it's worth one shot on the fallback before
+      // failing outright. Skip for 401/403 — those are API-key/config
+      // problems that would hit the fallback identically, not anything
+      // model-specific.
+      if (isTransient && fallbackModel && !usedFallback && lastStatus !== 401 && lastStatus !== 403) {
+        logger.error(`${model} exhausted its retries, falling back to ${fallbackModel}:`, err);
+        model = fallbackModel;
+        usedFallback = true;
+        maxRetries += 1;
+        continue;
+      }
+
+      break;
+    }
+  }
+
+  logger.error("Gemini API call failed:", lastErr);
+
+  if (lastErr instanceof RepetitionLoopError) {
+    throw new Error(
+      usedFallback
+        ? "The AI kept getting stuck repeating itself on both the main and backup models. Please try again."
+        : "The AI kept getting stuck repeating itself and couldn't finish. Please try again."
+    );
+  }
+
+  if (lastErr instanceof IncompleteResponseError) {
+    throw new Error(
+      usedFallback
+        ? `Both the main and backup models kept stopping before finishing (${
+            lastErr.finishReason || "no finish signal received"
+          }). Please try again.`
+        : `The AI kept stopping before finishing its response (${
+            lastErr.finishReason || "no finish signal received"
+          }). Please try again.`
+    );
+  }
+
+  if (lastStatus === 429) {
+    throw new RateLimitError(
+      usedFallback
+        ? "Gemini's free-tier rate limit has been reached for this app — even the backup model's daily quota is exhausted. Please wait a bit and try again."
+        : "Gemini's free-tier rate limit has been reached for this app. Please wait a bit and try again."
+    );
+  }
+
+  if (lastStatus === 401 || lastStatus === 403 || lastStatus === 500) {
+    throw new Error("The AI service isn't configured correctly. Check the server's Gemini API key.");
+  }
+
+  if (lastStatus === 503) {
+    throw new Error(
+      usedFallback
+        ? "Both the main and backup Gemini models are temporarily overloaded right now. Please try again shortly."
+        : "Gemini's servers are temporarily overloaded. This usually clears up within a minute or two — please try again shortly."
+    );
+  }
+
+  throw new Error("Failed to generate response from AI. Please try again.");
+}
