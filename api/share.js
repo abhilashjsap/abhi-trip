@@ -1,10 +1,4 @@
-import { Redis } from "@upstash/redis";
-
-// Server-side only, same reasoning as GEMINI_API_KEY in api/gemini.js: never
-// VITE_-prefixed, so it's never bundled into client JS.
-const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+import { redis } from "../lib/redis.js";
 
 const KEY_PREFIX = "share:";
 // Bounds storage growth on Upstash's free tier (256MB) as shares
