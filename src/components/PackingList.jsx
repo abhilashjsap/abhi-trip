@@ -7,6 +7,7 @@ const CATEGORY_LABELS = {
 };
 
 import RegenerateButton from "./RegenerateButton";
+import { toDisplayText } from "../utils/renderText";
 
 export default function PackingList({ packingList, onRegenerate, regenerating }) {
   if (!packingList) return null;
@@ -34,7 +35,7 @@ export default function PackingList({ packingList, onRegenerate, regenerating })
             <h4>{CATEGORY_LABELS[category] || category}</h4>
             <ul>
               {packingList[category].map((item, idx) => (
-                <li key={idx}>{item}</li>
+                <li key={idx}>{toDisplayText(item)}</li>
               ))}
             </ul>
           </div>
