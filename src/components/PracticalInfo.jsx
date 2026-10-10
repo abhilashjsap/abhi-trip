@@ -1,3 +1,5 @@
+import { toDisplayText } from "../utils/renderText";
+
 export default function PracticalInfo({ visaInfo, simInfo, bookInAdvance }) {
   if (!visaInfo && !simInfo) return null;
 
@@ -30,7 +32,7 @@ export default function PracticalInfo({ visaInfo, simInfo, bookInAdvance }) {
             <span className="practical-info-label">Book in advance</span>
             <ul>
               {bookInAdvance.map((item, idx) => (
-                <li key={idx}>{item}</li>
+                <li key={idx}>{toDisplayText(item)}</li>
               ))}
             </ul>
           </div>
