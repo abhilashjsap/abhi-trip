@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toDisplayText } from "../utils/renderText";
 
 export default function TripPlanner({ planner, currency, pax, currencyInfo }) {
   const [perPerson, setPerPerson] = useState(false);
@@ -96,7 +97,7 @@ export default function TripPlanner({ planner, currency, pax, currencyInfo }) {
           <h3>Tips</h3>
           <ul className="tips-list">
             {tips.map((tip, idx) => (
-              <li key={idx}>{tip}</li>
+              <li key={idx}>{toDisplayText(tip)}</li>
             ))}
           </ul>
         </div>
