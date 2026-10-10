@@ -1,13 +1,38 @@
-import { getTripHistory, removeTripFromHistory } from "../utils/tripStorage";
+import { useEffect, useState } from "react";
+import { fetchTrips, removeTripFromHistory } from "../utils/tripStorage";
 
 export default function TripHistory({ onSelect, onClose, onRefresh }) {
-  const history = getTripHistory();
+  const [history, setHistory] = useState(null); // null = still loading
+  const [error, setError] = useState("");
 
-  const handleRemove = (e, tripId) => {
+  useEffect(() => {
+    let cancelled = false;
+    fetchTrips().then(({ trips }) => {
+      if (!cancelled) setHistory(trips);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleRemove = async (e, tripId) => {
     e.stopPropagation();
-    removeTripFromHistory(tripId);
+    setError("");
+    try {
+      await removeTripFromHistory(tripId);
+    } catch (err) {
+      setError(err.message || "Couldn't remove that trip. Please try again.");
+    }
     onRefresh();
   };
+
+  if (history === null) {
+    return (
+      <div className="trip-history-empty">
+        <p>Loading your trips...</p>
+      </div>
+    );
+  }
 
   if (history.length === 0) {
     return (
@@ -28,6 +53,7 @@ export default function TripHistory({ onSelect, onClose, onRefresh }) {
           Back
         </button>
       </div>
+      {error && <p className="form-error">{error}</p>}
       <div className="trip-history-list">
         {history.map((trip) => (
           <button
