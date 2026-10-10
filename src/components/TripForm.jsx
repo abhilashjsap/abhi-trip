@@ -3,6 +3,7 @@ import { estimateBudgetForCategory, estimateMultiStopBudgetForCategory, BUDGET_C
 import { RateLimitError } from "../utils/gemini";
 import DestinationAutocomplete from "./DestinationAutocomplete";
 import DestinationsField from "./DestinationsField";
+import ModelSelector from "./ModelSelector";
 import logger from "../utils/logger";
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD"];
@@ -33,6 +34,7 @@ export default function TripForm({ onSubmit, loading }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [budgetFromCategory, setBudgetFromCategory] = useState(false);
   const [estimating, setEstimating] = useState(false);
+  const [provider, setProvider] = useState({ type: "gemini" });
 
   const isMulti = destinations.length > 1;
   const totalDays = destinations.reduce((sum, d) => sum + (Number(d.days) || 0), 0);
@@ -86,6 +88,7 @@ export default function TripForm({ onSubmit, loading }) {
             pax: Number(form.pax),
             flightsIncluded: form.flightsIncluded,
             budgetCategory: categoryKey,
+            provider,
           })
         : await estimateBudgetForCategory({
             destination: destinations[0].name,
@@ -95,6 +98,7 @@ export default function TripForm({ onSubmit, loading }) {
             days: totalDays,
             flightsIncluded: form.flightsIncluded,
             budgetCategory: categoryKey,
+            provider,
           });
 
       if (result.estimatedBudget) {
@@ -160,6 +164,7 @@ export default function TripForm({ onSubmit, loading }) {
       days: totalDays,
       budgetFromCategory,
       budgetCategory: budgetFromCategory ? selectedCategory : null,
+      provider,
     });
   };
 
@@ -321,6 +326,8 @@ export default function TripForm({ onSubmit, loading }) {
           ))}
         </select>
       </div>
+
+      <ModelSelector value={provider} onChange={setProvider} disabled={loading} />
 
       {error && <p className="form-error">{error}</p>}
 
