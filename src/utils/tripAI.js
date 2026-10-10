@@ -115,6 +115,7 @@ export async function estimateBudgetForCategory({
   days,
   flightsIncluded,
   budgetCategory,
+  provider,
 }) {
   const category = BUDGET_CATEGORIES[budgetCategory];
   if (!category) {
@@ -166,6 +167,7 @@ Rules:
     schema: BUDGET_ESTIMATE_SCHEMA,
     model: MODEL_SMALL,
     thinkingLevel: "MINIMAL",
+    provider,
   });
 
   let result;
@@ -214,6 +216,7 @@ async function checkBudgetFeasibility({
   pax,
   days,
   flightsIncluded,
+  provider,
 }) {
   const prompt = `
 Assess the realistic minimum cost for this trip. Be strict and honest — do not
@@ -266,6 +269,7 @@ Rules:
     schema: FEASIBILITY_SCHEMA,
     model: MODEL_SMALL,
     thinkingLevel: "MINIMAL",
+    provider,
   });
 
   let result;
@@ -519,6 +523,7 @@ Every field must be real and specific to ${destinationName} — never placeholde
       schema: tripExtrasSchema,
       model: MODEL_SMALL,
       thinkingLevel: "MINIMAL",
+      provider: formData.provider,
     });
     return JSON.parse(cleanJsonResponse(raw));
   } catch (err) {
@@ -603,6 +608,7 @@ async function generateSingleDestinationTripPlan(formData, onProgress) {
     // is a second, independent defense against the same failure that
     // doesn't cost either budget or time, so it carries this alone now.
     thinkingLevel: "LOW",
+    provider: formData.provider,
   });
 
   let parsed;
@@ -710,6 +716,7 @@ async function checkMultiStopBudgetFeasibility({
   pax,
   flightsIncluded,
   estimatedLegs,
+  provider,
 }) {
   const totalDays = destinations.reduce((sum, d) => sum + Number(d.days), 0);
   const routeDescription = destinations
@@ -780,6 +787,7 @@ Rules:
     schema: FEASIBILITY_SCHEMA,
     model: MODEL_SMALL,
     thinkingLevel: "MINIMAL",
+    provider,
   });
 
   let result;
@@ -831,6 +839,7 @@ export async function estimateMultiStopBudgetForCategory({
   pax,
   flightsIncluded,
   budgetCategory,
+  provider,
 }) {
   const category = BUDGET_CATEGORIES[budgetCategory];
   if (!category) {
@@ -891,6 +900,7 @@ Rules:
     schema: BUDGET_ESTIMATE_SCHEMA,
     model: MODEL_SMALL,
     thinkingLevel: "MINIMAL",
+    provider,
   });
 
   let result;
@@ -1154,6 +1164,7 @@ async function generatePerDestinationResult(destinationName, formData) {
       model: MODEL_LARGE,
       fallbackModel: MODEL_FALLBACK,
       thinkingLevel: "LOW",
+      provider: formData.provider,
     });
     const parsed = JSON.parse(cleanJsonResponse(raw));
 
@@ -1244,6 +1255,7 @@ async function generateItineraryAndBudget(formData, onProgress) {
     onChunk: onProgress,
     fallbackModel: MODEL_FALLBACK,
     thinkingLevel: "LOW",
+    provider: formData.provider,
   });
 
   try {
@@ -1440,6 +1452,7 @@ export async function regenerateSection(sectionKey, trip, formData, destinationN
     json: true,
     schema: config.schema,
     thinkingLevel: "LOW",
+    provider: formData.provider,
   });
 
   let result;
@@ -1507,6 +1520,7 @@ Every field must contain real, specific content about ${destination} — never p
     json: true,
     schema: itineraryDaySchema,
     thinkingLevel: "LOW",
+    provider: formData.provider,
   });
 
   let result;
