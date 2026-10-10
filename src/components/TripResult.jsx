@@ -201,6 +201,11 @@ export default function TripResult({
       </div>
 
       <div className="trip-body">
+        <div className="trip-brand-row">
+          <img className="brand-logo" src="/brand/abhitrip-icon.png" alt="" />
+          <span className="brand-mark">AbhiTrip</span>
+        </div>
+
         {readOnly && (
           <p className="shared-trip-banner">
             You're viewing a shared trip plan.
