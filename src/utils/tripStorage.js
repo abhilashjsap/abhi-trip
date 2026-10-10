@@ -1,4 +1,5 @@
 import { MODEL_LARGE, MODEL_SMALL, MODEL_FALLBACK } from "./gemini";
+import { getAuthToken } from "./auth";
 import logger from "./logger";
 
 // The free tier's real binding constraint is a hard REQUEST COUNT per day,
@@ -22,25 +23,32 @@ export const DAILY_REQUEST_LIMIT = {
   [MODEL_FALLBACK]: 20,
 };
 
-const CURRENT_TRIP_KEY = "abhi-trip-current";
-const TRIP_HISTORY_KEY = "abhi-trip-history";
-
-function readStoredJson(key, fallback) {
+// Trip storage lives server-side (Redis, keyed by username — see
+// api/trips.js), NOT in localStorage. It used to be one fixed localStorage
+// key regardless of who was signed in, which meant two accounts on the
+// same browser saw each other's trips, and the same account on two
+// different browsers saw two unrelated histories — neither is what anyone
+// signing into a real account would expect.
+async function authFetch(path, options = {}) {
+  const token = getAuthToken();
+  let res;
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (err) {
-    logger.error(`Failed to read stored data for ${key}:`, err);
-    return fallback;
+    res = await fetch(path, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } catch {
+    throw new Error("Couldn't reach the server. Please check your connection and try again.");
   }
-}
 
-function writeStoredJson(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (err) {
-    logger.error(`Failed to write stored data for ${key}:`, err);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || "Something went wrong. Please try again.");
   }
+  return data;
 }
 
 /**
@@ -87,37 +95,72 @@ export function normalizeTripShape(trip) {
   };
 }
 
-export function cacheCurrentTrip(trip) {
-  writeStoredJson(CURRENT_TRIP_KEY, trip);
-}
-
-export function loadCachedTrip() {
-  return normalizeTripShape(readStoredJson(CURRENT_TRIP_KEY, null));
-}
-
-export function clearCachedTrip() {
+/**
+ * Fetches the signed-in user's full trip list plus which trip (if any) is
+ * "current" (the one to restore on reload). Never throws — a failed fetch
+ * (signed out, network error, server error) just comes back as an empty
+ * list, same "degrade gracefully" pattern as the rest of this app's
+ * best-effort fetches (live FX rate, hero image, etc.).
+ * @returns {Promise<{trips: Object[], currentTripId: string|null}>}
+ */
+export async function fetchTrips() {
   try {
-    localStorage.removeItem(CURRENT_TRIP_KEY);
+    const data = await authFetch("/api/trips", { method: "GET" });
+    return {
+      trips: (data.trips || []).map(normalizeTripShape),
+      currentTripId: data.currentTripId || null,
+    };
   } catch (err) {
-    logger.error("Failed to clear cached trip:", err);
+    logger.error("Failed to fetch trips:", err);
+    return { trips: [], currentTripId: null };
   }
 }
 
-export function getTripHistory() {
-  const history = readStoredJson(TRIP_HISTORY_KEY, []);
-  return Array.isArray(history) ? history.map(normalizeTripShape) : [];
-}
-
-export function addTripToHistory(trip) {
+/**
+ * Upserts a trip into the signed-in user's history (deduped by id, most
+ * recent first) and marks it as the "current" trip to restore on reload —
+ * the server-backed equivalent of the old cacheCurrentTrip+addTripToHistory
+ * pair, which were always called together anyway.
+ */
+export async function saveTrip(trip) {
   if (!trip?.id) return;
-
-  const history = getTripHistory().filter((savedTrip) => savedTrip.id !== trip.id);
-  writeStoredJson(TRIP_HISTORY_KEY, [trip, ...history]);
+  try {
+    await authFetch("/api/trips", {
+      method: "POST",
+      body: JSON.stringify({ action: "save", trip }),
+    });
+  } catch (err) {
+    logger.error("Failed to save trip:", err);
+  }
 }
 
-export function removeTripFromHistory(tripId) {
-  writeStoredJson(
-    TRIP_HISTORY_KEY,
-    getTripHistory().filter((trip) => trip.id !== tripId)
-  );
+/** Marks an already-saved trip (picked from history) as "current", without re-saving it. */
+export async function setCurrentTripId(tripId) {
+  try {
+    await authFetch("/api/trips", {
+      method: "POST",
+      body: JSON.stringify({ action: "setCurrent", tripId }),
+    });
+  } catch (err) {
+    logger.error("Failed to set current trip:", err);
+  }
+}
+
+/** Forgets which trip is "current" (e.g. "Plan another") without deleting it from history. */
+export async function clearCurrentTrip() {
+  try {
+    await authFetch("/api/trips", {
+      method: "POST",
+      body: JSON.stringify({ action: "clearCurrent" }),
+    });
+  } catch (err) {
+    logger.error("Failed to clear current trip:", err);
+  }
+}
+
+export async function removeTripFromHistory(tripId) {
+  await authFetch("/api/trips", {
+    method: "POST",
+    body: JSON.stringify({ action: "remove", tripId }),
+  });
 }
