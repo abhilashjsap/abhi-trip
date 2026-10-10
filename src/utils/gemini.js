@@ -7,13 +7,15 @@ import {
 } from "./aiGuards";
 import { generateOllamaCompletion } from "./ollama";
 
-// Which AI backend to use. "gemini" (default) talks to Google's API via
-// the /api/gemini serverless proxy below. "ollama" is local-dev-only: it
-// bypasses everything Gemini-specific (quota tracking, the fallback model,
-// schema enforcement) and talks directly to a local Ollama server instead
-// — see ollama.js. Set VITE_AI_PROVIDER=ollama in a local .env file only;
-// a deployed build has no local Ollama server to reach.
-const AI_PROVIDER = import.meta.env.VITE_AI_PROVIDER || "gemini";
+// Which AI backend to use when a call doesn't say otherwise. "gemini"
+// (default) talks to Google's API via the /api/gemini serverless proxy
+// below. "ollama" bypasses everything Gemini-specific (quota tracking, the
+// fallback model, schema enforcement) and talks directly to a local Ollama
+// server instead — see ollama.js. This env var is now just a fallback for
+// any caller that doesn't pass its own `provider` — the actual per-trip
+// choice comes from ModelSelector.jsx on the homepage (see formData.provider,
+// threaded through tripAI.js into every generateCompletion call).
+const DEFAULT_AI_PROVIDER = import.meta.env.VITE_AI_PROVIDER || "gemini";
 
 // Re-exported for anything importing these from "./gemini" — they're
 // actually defined in aiGuards.js now so ollama.js can use them too
@@ -197,16 +199,20 @@ function sleep(ms) {
  *   valid JSON until the stream completes — this is for a "feels alive"
  *   progress preview, not incremental parsing.
  *
- * When VITE_AI_PROVIDER=ollama is set (local dev only — see the AI_PROVIDER
- * comment above), this delegates entirely to ollama.js instead: schema,
- * model, fallbackModel, and thinkingLevel are Gemini-specific and silently
- * ignored in that case, since Ollama has no equivalent concepts for any of
- * them (no quota, so no fallback model; no responseSchema, so json mode
- * there is just Ollama's own format:"json").
+ * @param {{type: "gemini"} | {type: "ollama", model: string}} [params.provider] -
+ *   per-call override of which backend to use, e.g. formData.provider as
+ *   set by ModelSelector.jsx on the homepage. When this picks "ollama",
+ *   schema/model/fallbackModel/thinkingLevel are Gemini-specific and
+ *   silently ignored, since Ollama has no equivalent concepts for any of
+ *   them (no quota, so no fallback model; no responseSchema, so json mode
+ *   there is just Ollama's own format:"json"). Falls back to
+ *   DEFAULT_AI_PROVIDER (VITE_AI_PROVIDER) when omitted, for any caller
+ *   that hasn't been updated to pass one explicitly.
  */
-export async function generateCompletion(params) {
-  if (AI_PROVIDER === "ollama") {
-    return generateOllamaCompletion(params);
+export async function generateCompletion({ provider, ...params }) {
+  const effectiveType = provider?.type || DEFAULT_AI_PROVIDER;
+  if (effectiveType === "ollama") {
+    return generateOllamaCompletion({ ...params, model: provider?.model });
   }
   return generateGeminiCompletion(params);
 }
