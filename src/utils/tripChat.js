@@ -165,5 +165,6 @@ ${context}`;
     model: MODEL_SMALL,
     thinkingLevel: "MINIMAL",
     onChunk,
+    provider: trip.input?.provider,
   });
 }
