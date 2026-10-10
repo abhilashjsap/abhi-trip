@@ -5,10 +5,11 @@ import BudgetWarning from "./components/BudgetWarning";
 import TripHistory from "./components/TripHistory";
 import UsageDashboard from "./components/UsageDashboard";
 import ThemeToggle from "./components/ThemeToggle";
-import PasswordGate, { isUnlocked } from "./components/PasswordGate";
+import SignIn from "./components/SignIn";
 import { generateTripPlan, BudgetTooLowError } from "./utils/tripAI";
 import { RateLimitError } from "./utils/gemini";
 import { loadSharedTrip } from "./utils/tripShare";
+import { isSignedIn, getUsername, signOut } from "./utils/auth";
 import {
   cacheCurrentTrip,
   loadCachedTrip,
@@ -30,13 +31,13 @@ function formatWaitTime(seconds) {
 
 // A shared trip link (?shared=<id>) is meant to work for whoever the
 // sender sends it to — read once, on the very first render, so it's
-// immune to the password gate and any of the normal app state below.
+// immune to sign-in and any of the normal app state below.
 function getSharedIdFromUrl() {
   return new URLSearchParams(window.location.search).get("shared");
 }
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -63,18 +64,26 @@ export default function App() {
   }, [sharedId]);
 
   useEffect(() => {
-    setUnlocked(isUnlocked());
+    setSignedIn(isSignedIn());
   }, []);
 
   // Reload-safe: on first mount, restore whatever trip was showing before
   // a reload, instead of losing it and forcing a re-generate.
   useEffect(() => {
-    if (unlocked && !trip) {
+    if (signedIn && !trip) {
       const cached = loadCachedTrip();
       if (cached) setTrip(cached);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unlocked]);
+  }, [signedIn]);
+
+  const handleSignOut = () => {
+    signOut();
+    setSignedIn(false);
+    setTrip(null);
+    clearCachedTrip();
+    setView("form");
+  };
 
   const handleGenerate = async (formData) => {
     setLoading(true);
@@ -164,6 +173,7 @@ export default function App() {
       content = (
         <div className="landing">
           <div className="landing-header">
+            <img className="brand-logo" src="/brand/abhitrip-icon.png" alt="" />
             <span className="brand-mark">AbhiTrip</span>
             <h1>Couldn't load this trip.</h1>
             <p>{sharedError}</p>
@@ -173,8 +183,8 @@ export default function App() {
     } else {
       content = <TripResult trip={sharedTrip} readOnly />;
     }
-  } else if (!unlocked) {
-    content = <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  } else if (!signedIn) {
+    content = <SignIn onSignedIn={() => setSignedIn(true)} />;
   } else if (loading) {
     content = (
       <div className="loading-state">
@@ -214,6 +224,7 @@ export default function App() {
     content = (
       <div className="landing">
         <div className="landing-header">
+          <img className="brand-logo" src="/brand/abhitrip-icon.png" alt="" />
           <span className="brand-mark">AbhiTrip</span>
           <h1>Plan the whole trip in one shot.</h1>
           <p>
@@ -224,15 +235,20 @@ export default function App() {
 
         <div className="landing-toolbar">
           <UsageDashboard />
-          {view === "form" && (
-            <button
-              type="button"
-              className="history-link-btn"
-              onClick={() => setView("history")}
-            >
-              View past trips
+          <div className="landing-toolbar-actions">
+            {view === "form" && (
+              <button
+                type="button"
+                className="history-link-btn"
+                onClick={() => setView("history")}
+              >
+                View past trips
+              </button>
+            )}
+            <button type="button" className="history-link-btn" onClick={handleSignOut}>
+              Sign out{getUsername() ? ` (${getUsername()})` : ""}
             </button>
-          )}
+          </div>
         </div>
 
         {view === "history" ? (
