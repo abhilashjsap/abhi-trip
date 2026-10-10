@@ -6,20 +6,44 @@ import {
   createRunawayStringGuard,
 } from "./aiGuards";
 
-// Local-dev-only provider: talks directly to a locally running Ollama
-// server (`ollama serve`, default port 11434) from the browser — no
-// server-side proxy, since there's nothing for a deployed Vercel function
-// to reach (Ollama runs on YOUR machine, not Vercel's). Only takes effect
-// when VITE_AI_PROVIDER=ollama is set (see gemini.js's generateCompletion,
-// which checks this before doing anything Gemini-specific) — set it in a
-// local .env file, never in the deployed environment's variables.
+// Talks directly to a locally running Ollama server (`ollama serve`,
+// default port 11434) from the browser — no server-side proxy, since
+// there's nothing for a deployed Vercel function to reach (Ollama runs on
+// YOUR machine, not Vercel's). Works both from a local `vite dev` session
+// AND from the deployed site, as long as the browser making the request is
+// on the same machine Ollama is running on — the model choice itself (see
+// ModelSelector.jsx) is a per-generation UI pick, not a build-time env var
+// anymore, though VITE_OLLAMA_MODEL still works as a fallback default for
+// any caller that doesn't pass one explicitly.
 const OLLAMA_BASE_URL = import.meta.env.VITE_OLLAMA_BASE_URL || "http://localhost:11434";
-// No hardcoded default model — picking one that isn't actually pulled would
-// just trade a clear "set this" error for a confusing 404 from Ollama.
-const OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL;
+const DEFAULT_OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Lists models already pulled on the local Ollama server, for the model
+ * picker on the homepage to offer as "private/local" choices alongside
+ * Gemini. Never throws: returns [] if Ollama isn't running, isn't
+ * reachable, or — commonly — is blocked by Ollama's own CORS policy, which
+ * by default only allows requests from 127.0.0.1/0.0.0.0, NOT arbitrary
+ * origins like a Vite dev server's http://localhost:5173 or a deployed
+ * site. Set OLLAMA_ORIGINS (then restart Ollama) to allow this app's
+ * actual origin if detection comes back empty despite Ollama running.
+ * @returns {Promise<string[]>} model names (e.g. "llama3.2:latest"), as
+ *   accepted by the `model` field of /api/chat
+ */
+export async function listOllamaModels() {
+  try {
+    const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.models || []).map((m) => m.model || m.name).filter(Boolean);
+  } catch (err) {
+    logger.debug("Ollama model detection failed (not running, unreachable, or CORS-blocked):", err);
+    return [];
+  }
 }
 
 /**
@@ -38,6 +62,10 @@ function sleep(ms) {
  * already guards against (repetition loops, incomplete streams) — there's
  * no quota/429 concept for a model running on your own machine, so none of
  * gemini.js's fallback-model/backoff machinery applies.
+ * @param {string} [params.model] - which locally-pulled model to use (as
+ *   returned by listOllamaModels/the model picker). Falls back to
+ *   VITE_OLLAMA_MODEL if not given, for backward compatibility with the
+ *   original env-var-only setup.
  */
 export async function generateOllamaCompletion({
   system,
@@ -46,10 +74,12 @@ export async function generateOllamaCompletion({
   maxTokens = 4096,
   json = false,
   onChunk,
+  model,
 }) {
-  if (!OLLAMA_MODEL) {
+  const modelToUse = model || DEFAULT_OLLAMA_MODEL;
+  if (!modelToUse) {
     throw new Error(
-      "VITE_AI_PROVIDER=ollama is set but VITE_OLLAMA_MODEL isn't — set it to a model you've pulled locally, e.g. VITE_OLLAMA_MODEL=llama3.2"
+      "No Ollama model selected, and VITE_OLLAMA_MODEL isn't set as a fallback — pick a local model from the homepage, or set VITE_OLLAMA_MODEL to one you've pulled (e.g. VITE_OLLAMA_MODEL=llama3.2)."
     );
   }
 
@@ -58,7 +88,7 @@ export async function generateOllamaCompletion({
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      logger.debug("Calling Ollama", { model: OLLAMA_MODEL, json, attempt: attempt + 1 });
+      logger.debug("Calling Ollama", { model: modelToUse, json, attempt: attempt + 1 });
 
       let res;
       try {
@@ -66,7 +96,7 @@ export async function generateOllamaCompletion({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: OLLAMA_MODEL,
+            model: modelToUse,
             messages: [
               { role: "system", content: system },
               { role: "user", content: prompt },
