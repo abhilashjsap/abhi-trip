@@ -11,10 +11,10 @@ import { RateLimitError } from "./utils/gemini";
 import { loadSharedTrip } from "./utils/tripShare";
 import { isSignedIn, getUsername, signOut } from "./utils/auth";
 import {
-  cacheCurrentTrip,
-  loadCachedTrip,
-  clearCachedTrip,
-  addTripToHistory,
+  fetchTrips,
+  saveTrip,
+  setCurrentTripId,
+  clearCurrentTrip,
   normalizeTripShape,
 } from "./utils/tripStorage";
 import logger from "./utils/logger";
@@ -68,12 +68,19 @@ export default function App() {
   }, []);
 
   // Reload-safe: on first mount, restore whatever trip was showing before
-  // a reload, instead of losing it and forcing a re-generate.
+  // a reload, instead of losing it and forcing a re-generate. Now a server
+  // fetch (per-account) instead of a synchronous localStorage read.
   useEffect(() => {
-    if (signedIn && !trip) {
-      const cached = loadCachedTrip();
-      if (cached) setTrip(cached);
-    }
+    if (!signedIn || trip) return;
+    let cancelled = false;
+    fetchTrips().then(({ trips, currentTripId }) => {
+      if (cancelled) return;
+      const current = trips.find((t) => t.id === currentTripId);
+      if (current) setTrip(current);
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn]);
 
@@ -81,7 +88,10 @@ export default function App() {
     signOut();
     setSignedIn(false);
     setTrip(null);
-    clearCachedTrip();
+    // Deliberately NOT clearing the "current trip" server-side here — that
+    // would forget it for this account every time they sign out, forcing
+    // a re-select from history every time they sign back in. Signing out
+    // should just stop SHOWING their data locally, not erase it.
     setView("form");
   };
 
@@ -98,8 +108,7 @@ export default function App() {
       // multi-stop trip the moment it's created, not just after a reload.
       const result = normalizeTripShape(await generateTripPlan(formData, setStreamPreview));
       setTrip(result);
-      cacheCurrentTrip(result);
-      addTripToHistory(result);
+      saveTrip(result);
     } catch (err) {
       if (err instanceof BudgetTooLowError) {
         logger.info("Budget infeasible:", err.feasibility);
@@ -125,7 +134,7 @@ export default function App() {
     setTrip(null);
     setError("");
     setFeasibility(null);
-    clearCachedTrip();
+    clearCurrentTrip();
     setView("form");
   };
 
@@ -137,8 +146,7 @@ export default function App() {
     if (!trip) return;
     const updated = { ...trip, itinerary: nextItinerary };
     setTrip(updated);
-    cacheCurrentTrip(updated);
-    addTripToHistory(updated); // keep history entry in sync with edits
+    saveTrip(updated); // keep the saved trip in sync with edits
   };
 
   // General-purpose version of the above, for section regeneration
@@ -146,13 +154,12 @@ export default function App() {
   // days) — takes the whole next trip object rather than just the itinerary.
   const handleUpdateTrip = (nextTrip) => {
     setTrip(nextTrip);
-    cacheCurrentTrip(nextTrip);
-    addTripToHistory(nextTrip);
+    saveTrip(nextTrip);
   };
 
   const handleSelectFromHistory = (selectedTrip) => {
     setTrip(selectedTrip);
-    cacheCurrentTrip(selectedTrip);
+    setCurrentTripId(selectedTrip.id);
     setView("form");
   };
 
