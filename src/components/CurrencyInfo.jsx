@@ -1,3 +1,5 @@
+import { toDisplayText } from "../utils/renderText";
+
 const RECOMMENDATION_LABELS = {
   "carry-cash": "Carry cash in your home currency",
   "get-local-currency": "Get local currency before/on arrival",
@@ -102,7 +104,7 @@ export default function CurrencyInfo({ currencyInfo, currency }) {
             <span className="currency-label">Better places to exchange</span>
             <ul>
               {betterExchangeOptions.map((opt, idx) => (
-                <li key={idx}>{opt}</li>
+                <li key={idx}>{toDisplayText(opt)}</li>
               ))}
             </ul>
           </div>
