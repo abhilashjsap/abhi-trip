@@ -144,6 +144,29 @@ button {
   margin-bottom: 1rem;
 }
 
+.brand-logo {
+  width: 48px;
+  height: auto;
+  display: block;
+  margin: 0 auto 0.75rem;
+}
+
+.trip-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.trip-brand-row .brand-logo {
+  width: 28px;
+  margin: 0;
+}
+
+.trip-brand-row .brand-mark {
+  margin-bottom: 0;
+}
+
 .landing-header h1 {
   font-family: var(--font-display);
   font-size: clamp(2.5rem, 6vw, 3.5rem);
@@ -2455,6 +2478,29 @@ button:disabled {
 }
 
 .history-link-btn:hover {
+  color: var(--rust);
+}
+
+.landing-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.auth-mode-toggle {
+  display: block;
+  margin: 1.5rem auto 0;
+  background: none;
+  border: none;
+  color: var(--sage);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.auth-mode-toggle:hover {
   color: var(--rust);
 }
 
