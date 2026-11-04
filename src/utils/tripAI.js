@@ -138,7 +138,10 @@ comfort level: ${category.tier}.
 
 Work this out category by category (accommodation is per ROOM per night — work
 out how many rooms ${pax} traveler(s) actually need, don't multiply room cost
-by every traveler), being careful with your multiplication.
+by every traveler), being careful with your multiplication. Ground every
+figure in genuinely realistic, current (2026) typical prices for ${destination}
+specifically — reason from real typical cost levels, not a round number that
+merely looks plausible.
 
 Respond ONLY with JSON in this exact shape:
 {
@@ -160,6 +163,8 @@ Rules:
 - Each "subtotal" MUST equal perUnitCost × units — check your own multiplication.
 - estimatedBudget MUST equal the sum of all "subtotal" values. Add them up yourself.
 - All figures in ${currency}, for the TOTAL trip (all ${pax} traveler(s), all ${days} day(s)) unless a line item says otherwise.
+- If entering ${destination} typically requires a traveler from ${departureCity}'s country to pay for a visa or e-visa (not visa-free, and not a genuinely free visa-on-arrival), add a "Passport/Visa fees" line item to the breakdown — a one-time, per-traveler government/e-visa processing fee (unit: "per person", units: ${pax}), using the real typical fee for this specific nationality/destination pair. Omit this line entirely if the route is actually visa-free or has no fee.
+- If flights are included, the "Flights" perUnitCost must reflect a REAL typical current-year economy round-trip fare for the ${departureCity} → ${destination} route specifically, not a generic guess.
 `.trim();
 
   const raw = await generateCompletion({
@@ -261,6 +266,8 @@ Rules:
 - Each "subtotal" MUST equal perUnitCost × units — check your own multiplication.
 - minimumRealisticBudget MUST equal the sum of all "subtotal" values in breakdown. Add them up yourself, don't estimate separately.
 - All figures in ${currency}, for the TOTAL trip (all ${pax} traveler(s), all ${days} day(s)) unless a line item says otherwise.
+- If entering ${destination} typically requires a traveler from ${departureCity}'s country to pay for a visa or e-visa (not visa-free, and not a genuinely free visa-on-arrival), add a "Passport/Visa fees" line item — a one-time, per-traveler government/e-visa processing fee (unit: "per person", units: ${pax}), using the real typical fee for this specific nationality/destination pair. Omit this line entirely if the route is actually visa-free or has no fee.
+- If flights are included, the "Flights" perUnitCost must reflect a REAL typical current-year economy round-trip fare for the ${departureCity} → ${destination} route specifically, not a generic guess.
 - Do not judge feasibility yourself — just give the honest, correctly-summed minimum figure.
 `.trim();
 
@@ -393,6 +400,7 @@ Respond ONLY with a JSON object in this exact shape:
       { "category": "Transport", "amount": 0, "percentage": 0 },
       { "category": "Activities", "amount": 0, "percentage": 0 },
       { "category": "Flights", "amount": 0, "percentage": 0 },
+      { "category": "Passport/Visa fees", "amount": 0, "percentage": 0 },
       { "category": "Misc/Buffer", "amount": 0, "percentage": 0 }
     ],
     "tips": ["tip1", "tip2", "tip3"],
@@ -471,8 +479,9 @@ Rules:
 - rating reflects how good that month is for tourism specifically (weather + crowds + typical conditions), not just raw temperature — "best" for the ideal window, "avoid" for genuinely bad months (monsoon, extreme heat/cold, etc.), "good"/"okay" in between.
 - bestFor should be genuinely month-specific (a real festival/event that happens then, a seasonal fruit/dish in season, a seasonal activity like cherry blossoms or whale watching) — don't repeat generic sightseeing advice across every month. Use null if nothing distinct applies that month.
 - Base weather on ${destination}'s real typical climate — these are historical seasonal averages, not a live forecast.
-- budgetBreakdown amounts must sum to approximately the total budget (${budget} ${currency}), and must be built bottom-up from what THIS specific itinerary actually costs — not arbitrary round percentages that merely add up.
-- If flights are included, the "Flights" category must cover the international outbound+return fares for all ${pax} traveler(s) AND the cost of any domestic/connecting flight the itinerary itself includes between cities (e.g. a multi-city route that flies from one place to another mid-trip) — don't silently drop that leg from the budget just because it isn't in outbound/returnFlight.
+- budgetBreakdown amounts must sum to approximately the total budget (${budget} ${currency}), and must be built bottom-up from what THIS specific itinerary actually costs, grounded in genuinely realistic current (2026) prices for ${destination} — not arbitrary round percentages or round-looking numbers that merely add up.
+- If flights are included, the "Flights" category must cover the international outbound+return fares for all ${pax} traveler(s) AND the cost of any domestic/connecting flight the itinerary itself includes between cities (e.g. a multi-city route that flies from one place to another mid-trip) — don't silently drop that leg from the budget just because it isn't in outbound/returnFlight. outbound/returnFlight priceRangeLow/High must reflect REAL typical current-year economy round-trip fares for the ${departureCity} → ${destination} route specifically (actual airlines that fly it, typical seasonal variance), not an arbitrary guess.
+- If entering ${destination} typically requires a traveler from ${departureCity}'s country to pay for a visa or e-visa (not visa-free, and not a genuinely free visa-on-arrival), add a "Passport/Visa fees" category to budgetBreakdown — a one-time, per-traveler government/e-visa processing fee for all ${pax} traveler(s), using the real typical fee for this specific nationality/destination pair. Omit this category entirely if the route is actually visa-free or has no fee.
 - The "Activities" category must reflect realistic, typical entrance/ticket/tour prices for the SPECIFIC paid attractions and excursions this itinerary actually includes (e.g. a cable car, a day cruise with lunch, a paid museum), multiplied by ${pax} traveler(s) — not a generic leftover percentage. A day likely to include one or more marquee paid excursions should visibly cost more per person than a day of free walking/sightseeing.
 - The "Transport" category should cover realistic costs for the specific transfers this itinerary describes (private transfers, intercity minibus/car, in-city rides) for a group of ${pax}, not just a token amount.
 - accommodation must reflect the SAME hotel tier the itinerary/budget actually assumes${
@@ -509,7 +518,7 @@ Rules:
 async function getTripExtras(formData, attractionNames, destinationName = formData.destination) {
   const prompt = `
 Give practical extra info for a trip from ${formData.departureCity} to ${destinationName}:
-- visaInfo: the real visa requirement for a traveler from ${formData.departureCity}'s country entering ${destinationName} (e-visa / visa-free / visa-on-arrival / visa-required), with brief processing guidance.
+- visaInfo: the real visa requirement for a traveler from ${formData.departureCity}'s country entering ${destinationName} (e-visa / visa-free / visa-on-arrival / visa-required), with brief processing guidance, and feeEstimate: the real typical government/e-visa fee for this specific nationality/destination pair (e.g. "approx. $25 USD"), or null if genuinely visa-free or fee-free.
 - simInfo: whether to get a local SIM/eSIM or use roaming, with rough cost and where to get one.
 - phrasebook: 4-6 useful phrases in the local language of ${destinationName}, each with a rough phonetic pronunciation.
 - bookInAdvance: 2-4 things worth booking ahead for this specific trip, drawn from these actual attractions: ${attractionNames.join(", ") || "none listed"}.
@@ -779,6 +788,8 @@ Rules:
 - minimumRealisticBudget MUST equal the sum of all "subtotal" values in breakdown. Add them up yourself, don't estimate separately.
 - "Inter-city transport" must cover ALL ${Math.max(destinations.length - 1, 0)} hop(s) between consecutive stops in the route above, for all ${pax} traveler(s) combined.
 - All figures in ${currency}, for the TOTAL trip (all ${pax} traveler(s), all ${totalDays} day(s)) unless a line item says otherwise.
+- If entering any stop on this route typically requires a traveler from ${departureCity}'s country to pay for a visa or e-visa (not visa-free, and not a genuinely free visa-on-arrival), add a single "Passport/Visa fees" line item covering the real typical fee(s) for every such stop combined, for all ${pax} traveler(s). Omit this line entirely if every stop is actually visa-free or fee-free for this nationality.
+- If flights are included, the "Flights" perUnitCost must reflect a REAL typical current-year economy round-trip fare for the ${departureCity} → ${destinations[0]?.name} route specifically, not a generic guess.
 - Do not judge feasibility yourself — just give the honest, correctly-summed minimum figure.
 `.trim();
 
@@ -893,6 +904,8 @@ Rules:
 - estimatedBudget MUST equal the sum of all "subtotal" values. Add them up yourself.
 - "Inter-city transport" must cover ALL ${Math.max(destinations.length - 1, 0)} hop(s) between consecutive stops, for all ${pax} traveler(s) combined.
 - All figures in ${currency}, for the TOTAL trip (all ${pax} traveler(s), all ${totalDays} day(s)) unless a line item says otherwise.
+- If entering any stop on this route typically requires a traveler from ${departureCity}'s country to pay for a visa or e-visa (not visa-free, and not a genuinely free visa-on-arrival), add a single "Passport/Visa fees" line item covering the real typical fee(s) for every such stop combined, for all ${pax} traveler(s). Omit this line entirely if every stop is actually visa-free or fee-free for this nationality.
+- If flights are included, the "Flights" perUnitCost must reflect a REAL typical current-year economy round-trip fare for the ${departureCity} → ${destinations[0]?.name} route specifically, not a generic guess.
 `.trim();
 
   const raw = await generateCompletion({
@@ -1112,6 +1125,7 @@ Respond ONLY with a JSON object in this exact shape:
       { "category": "Inter-city transport", "amount": 0, "percentage": 0 },
       { "category": "Activities", "amount": 0, "percentage": 0 },
       { "category": "Flights", "amount": 0, "percentage": 0 },
+      { "category": "Passport/Visa fees", "amount": 0, "percentage": 0 },
       { "category": "Misc/Buffer", "amount": 0, "percentage": 0 }
     ],
     "tips": ["tip1", "tip2", "tip3"],
@@ -1138,10 +1152,11 @@ Rules:
 - itinerary must have exactly ${totalDays} day entries total, numbered 1 through ${totalDays}, each with a "destination" matching the route above for that day number.
 - Every stop must get real, distinct day-by-day content — don't reuse the same activities across stops.
 - interCityLegs must have exactly ${Math.max(destinations.length - 1, 0)} entries, one per consecutive pair of stops in route order, each with a realistic mode/price/duration for THAT specific pair of places (not a generic guess) — a short hop between nearby places and a long-haul crossing should look very different from each other.
-- budgetBreakdown amounts must sum to approximately the total budget (${budget} ${currency}), built bottom-up from what THIS specific itinerary and route actually cost — not arbitrary round percentages.
+- budgetBreakdown amounts must sum to approximately the total budget (${budget} ${currency}), built bottom-up from what THIS specific itinerary and route actually cost, grounded in genuinely realistic current (2026) prices — not arbitrary round percentages or round-looking numbers.
 - "Inter-city transport" in budgetBreakdown must cover the total cost of ALL interCityLegs above, for all ${pax} traveler(s).
-- If flights are included, "Flights" must cover the international outbound+return fares for all ${pax} traveler(s) for the open-jaw route described above.
+- If flights are included, "Flights" must cover the international outbound+return fares for all ${pax} traveler(s) for the open-jaw route described above — outbound/returnFlight priceRangeLow/High must reflect REAL typical current-year economy fares for ${departureCity} → ${firstStop} and ${lastStop} → ${departureCity} specifically (actual airlines that fly each route), not an arbitrary guess.
 - If flights are excluded, omit or zero the "Flights" category and set "flights" to null.
+- If entering any stop on this route typically requires a traveler from ${departureCity}'s country to pay for a visa or e-visa (not visa-free, and not a genuinely free visa-on-arrival), the "Passport/Visa fees" category must cover the real typical fee(s) for every such stop combined, for all ${pax} traveler(s). Omit this category (and its entry above) entirely if every stop is actually visa-free or fee-free for this nationality.
 - packingList must account for EVERY stop's typical climate for the time of year — call out layering/climate differences explicitly if stops differ a lot (e.g. tropical heat then a cooler city).
 - Every text field must contain real, specific content — never placeholder or filler text. If a field genuinely doesn't apply, use null instead of a placeholder.
 - Keep JSON valid — no trailing commas, no comments.
