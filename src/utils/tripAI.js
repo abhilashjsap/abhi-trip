@@ -343,6 +343,7 @@ function buildPrompt({
   flightsIncluded,
   tripType,
   budgetCategory,
+  customInstructions,
 }) {
   const tripTypeContext = TRIP_TYPE_LABELS[tripType] || "a general traveler";
   const categoryInfo = BUDGET_CATEGORIES[budgetCategory];
@@ -363,6 +364,7 @@ Plan a trip with these details:
       ? `estimate round-trip flight fares from ${departureCity} to ${destination}, in ${currency}, and include in budget`
       : "traveler is arranging flights separately, exclude flight cost from budget"
   }
+${customInstructions ? `- Additional instructions from the traveler: ${customInstructions}` : ""}
 
 Respond ONLY with a JSON object in this exact shape:
 
@@ -502,7 +504,11 @@ Rules:
 - emergencyInfo.generalEmergencyNumber must be the actual real emergency contact number(s) used in ${destination} (e.g. a single unified number like "112" or "999", or split numbers like "100 Police / 101 Fire / 102 Ambulance" if the country uses separate ones) — never invent a plausible-looking number.
 - emergencyInfo.embassyNote should be practical, specific guidance for a traveler from ${departureCity} on finding/contacting their home country's embassy or consulate in ${destination} — not generic "contact your embassy" filler.
 - Every text field must contain real, specific content about ${destination} — never placeholder or filler text (e.g. never write literal text like "reason text" or "description here"). If a field genuinely doesn't apply, use null instead of a placeholder.
-- Keep JSON valid — no trailing commas, no comments.
+${
+  customInstructions
+    ? `- Follow the traveler's additional instructions above as closely as possible across the whole plan (itinerary, attractions, food, accommodation, etc.) — but never let them override factual fields like weather, emergency numbers, or visa-adjacent safety info with something false.\n`
+    : ""
+}- Keep JSON valid — no trailing commas, no comments.
 `.trim();
 }
 
@@ -957,7 +963,7 @@ Rules:
  * cross-cutting across the whole route.
  */
 function buildPerDestinationPrompt(destinationName, formData) {
-  const { currency, pax, tripType, budgetCategory } = formData;
+  const { currency, pax, tripType, budgetCategory, customInstructions } = formData;
   const tripTypeContext = TRIP_TYPE_LABELS[tripType] || "a general traveler";
   const categoryInfo = BUDGET_CATEGORIES[budgetCategory];
 
@@ -969,6 +975,7 @@ trip are handled separately; don't reference them.
 - Trip type: this trip is for ${tripTypeContext}. Tailor attraction/food/shopping picks to suit this group.
 - Comfort level: ${categoryInfo ? `a "${categoryInfo.label}" trip — ${categoryInfo.tier}` : "a typical range appropriate for this trip's overall budget"}.
 - Prices should be in ${currency}.
+${customInstructions ? `- Additional instructions from the traveler (apply to every stop): ${customInstructions}` : ""}
 
 Respond ONLY with a JSON object in this exact shape:
 {
@@ -1053,7 +1060,11 @@ Rules:
 - bewareOf should list 3-5 real, specific things to watch out for in ${destinationName} — or say plainly if it's genuinely very safe rather than inventing generic ones.
 - emergencyInfo.generalEmergencyNumber must be the actual real emergency number(s) used in ${destinationName} — never invent a plausible-looking number.
 - Every text field must contain real, specific content about ${destinationName} — never placeholder text. Use null where a field genuinely doesn't apply.
-- Keep JSON valid — no trailing commas, no comments.
+${
+  customInstructions
+    ? `- Follow the traveler's additional instructions above as closely as possible — but never let them override factual fields like weather or emergency numbers with something false.\n`
+    : ""
+}- Keep JSON valid — no trailing commas, no comments.
 `.trim();
 }
 
@@ -1064,7 +1075,7 @@ Rules:
  * single trip-wide packing list.
  */
 function buildItineraryBudgetPrompt(formData, legEstimates) {
-  const { destinations, departureCity, budget, currency, pax, flightsIncluded, tripType } = formData;
+  const { destinations, departureCity, budget, currency, pax, flightsIncluded, tripType, customInstructions } = formData;
   const tripTypeContext = TRIP_TYPE_LABELS[tripType] || "a general traveler";
   const totalDays = destinations.reduce((sum, d) => sum + Number(d.days), 0);
   const ranges = computeDayRanges(destinations);
@@ -1094,6 +1105,7 @@ Plan a MULTI-DESTINATION trip with these details:
       ? `estimate an OPEN-JAW round trip: outbound from ${departureCity} to ${firstStop}, and a SEPARATE return from ${lastStop} back to ${departureCity} (NOT a round trip to a single place) — include both in the budget`
       : "traveler is arranging international flights separately, exclude that cost from budget"
   }
+${customInstructions ? `- Additional instructions from the traveler: ${customInstructions}` : ""}
 ${legsHint ? `\nRough inter-city leg estimates between consecutive stops (geometric, not authoritative):\n${legsHint}` : ""}
 
 Respond ONLY with a JSON object in this exact shape:
@@ -1159,7 +1171,11 @@ Rules:
 - If entering any stop on this route typically requires a traveler from ${departureCity}'s country to pay for a visa or e-visa (not visa-free, and not a genuinely free visa-on-arrival), the "Passport/Visa fees" category must cover the real typical fee(s) for every such stop combined, for all ${pax} traveler(s). Omit this category (and its entry above) entirely if every stop is actually visa-free or fee-free for this nationality.
 - packingList must account for EVERY stop's typical climate for the time of year — call out layering/climate differences explicitly if stops differ a lot (e.g. tropical heat then a cooler city).
 - Every text field must contain real, specific content — never placeholder or filler text. If a field genuinely doesn't apply, use null instead of a placeholder.
-- Keep JSON valid — no trailing commas, no comments.
+${
+  customInstructions
+    ? `- Follow the traveler's additional instructions above as closely as possible across the itinerary/tips — but never let them override factual fields like flight/leg pricing logic with something false.\n`
+    : ""
+}- Keep JSON valid — no trailing commas, no comments.
 `.trim();
 }
 
