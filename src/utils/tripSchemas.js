@@ -256,6 +256,12 @@ export const tripExtrasSchema = {
       properties: {
         status: { type: "STRING", maxLength: "60" },
         note: { type: "STRING", maxLength: "300" },
+        feeEstimate: {
+          type: "STRING",
+          nullable: true,
+          maxLength: "60",
+          description: "e.g. 'approx. $25 USD', or null if genuinely free/visa-free",
+        },
       },
       required: ["status", "note"],
     },
