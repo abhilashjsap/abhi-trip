@@ -1,4 +1,4 @@
-import { createOpenAICompatHandler } from "../lib/openaiCompatProxy";
+import { createOpenAICompatHandler } from "../lib/openaiCompatProxy.js";
 
 export default createOpenAICompatHandler({
   baseUrl: "https://api.groq.com/openai/v1",
