@@ -21,6 +21,10 @@ import {
 } from "./tripSchemas";
 import logger from "./logger";
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const SYSTEM_PROMPT = `You are AbhiTrip, an expert AI travel planner. You produce
 detailed, practical, and realistic trip plans. You ALWAYS respond with valid
 JSON only — no markdown fences, no commentary, no text outside the JSON object.
@@ -1266,13 +1270,27 @@ async function generateItineraryAndBudget(formData, onProgress) {
   }
 }
 
+// Gemini's free tier enforces a per-minute burst cap (confirmed live: 5
+// requests/minute for MODEL_LARGE, shared across every visitor using this
+// app's one API key) on top of its daily one. Firing all N per-destination
+// calls plus the itinerary call in the same instant — all hitting
+// MODEL_LARGE — reliably blew through that cap by itself on anything but a
+// single-destination trip, especially once each call's own internal retries
+// (503/repetition/incomplete) piled on more requests within the same
+// window. Staggering the kickoffs spreads them out enough to stay under 5/
+// minute for the trip sizes this app actually sees, at the cost of a little
+// latency — still far less than running them fully sequentially.
+const MULTI_STOP_CALL_STAGGER_MS = 4000;
+
 /**
  * Multi-stop trip generation (2+ destinations) — see the plan's "AI call
  * orchestration" section for the full reasoning. Feasibility gates the rest
  * (same pattern as the single-destination path); the N per-destination
  * content calls and the one cross-cutting itinerary/budget call then run
- * in parallel, trading a little cross-call consistency for latency close to
- * a single-destination generation instead of N+1x it.
+ * concurrently (staggered — see MULTI_STOP_CALL_STAGGER_MS), trading a
+ * little cross-call consistency for latency much closer to a single-
+ * destination generation than running them fully sequentially (N+1x) would
+ * cost.
  */
 async function generateMultiStopTripPlan(formData, onProgress) {
   const { destinations } = formData;
@@ -1288,8 +1306,16 @@ async function generateMultiStopTripPlan(formData, onProgress) {
   logger.info("Generating multi-stop trip plan for", formData.destinationLabel);
 
   const [perDestinationResults, crossCutting] = await Promise.all([
-    Promise.all(destinations.map((d) => generatePerDestinationResult(d.name, formData))),
-    generateItineraryAndBudget(formData, onProgress),
+    Promise.all(
+      destinations.map((d, idx) =>
+        sleep(idx * MULTI_STOP_CALL_STAGGER_MS).then(() =>
+          generatePerDestinationResult(d.name, formData)
+        )
+      )
+    ),
+    sleep(destinations.length * MULTI_STOP_CALL_STAGGER_MS).then(() =>
+      generateItineraryAndBudget(formData, onProgress)
+    ),
   ]);
 
   return {
