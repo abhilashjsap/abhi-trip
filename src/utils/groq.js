@@ -38,5 +38,12 @@ export async function generateGroqCompletion({
     maxTokens,
     json,
     onChunk,
+    // gpt-oss models reason by default, spending part of the completion
+    // budget on hidden chain-of-thought before any visible JSON — "low" is
+    // the lightest option Groq exposes for this family (no "none"/off
+    // value — that's Qwen-only per Groq's own docs). Confirmed live: left
+    // at the default, this reliably burned the ENTIRE budget on these large
+    // JSON generations with finish_reason "length" and empty content.
+    extraBody: { reasoning_effort: "low" },
   });
 }
