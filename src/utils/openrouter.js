@@ -35,5 +35,14 @@ export async function generateOpenRouterCompletion({
     maxTokens,
     json,
     onChunk,
+    // Both free models reason by default, spending part of the completion
+    // budget on hidden chain-of-thought before any visible JSON — "low"
+    // keeps some reasoning (safer than disabling outright: OpenRouter's own
+    // docs warn some models reject enabled:false/effort:"none" when their
+    // reasoning is mandatory) while leaving most of the budget for the
+    // actual JSON. Confirmed live: left at the default, this reliably
+    // burned the ENTIRE budget with finish_reason "length" and empty
+    // content on nvidia/nemotron-3.5-super-vl:free.
+    extraBody: { reasoning: { effort: "low" } },
   });
 }
