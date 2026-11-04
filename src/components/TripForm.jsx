@@ -24,6 +24,7 @@ const initialState = {
   pax: 1,
   flightsIncluded: false,
   tripType: "",
+  customInstructions: "",
 };
 
 export default function TripForm({ onSubmit, loading }) {
@@ -164,6 +165,7 @@ export default function TripForm({ onSubmit, loading }) {
       days: totalDays,
       budgetFromCategory,
       budgetCategory: budgetFromCategory ? selectedCategory : null,
+      customInstructions: form.customInstructions.trim() || undefined,
       provider,
     });
   };
@@ -325,6 +327,22 @@ export default function TripForm({ onSubmit, loading }) {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="customInstructions">Anything else? (optional)</label>
+        <textarea
+          id="customInstructions"
+          rows={3}
+          maxLength={500}
+          placeholder="e.g. vegetarian food only, avoid late-night activities, I love photography spots, keep one full free day..."
+          value={form.customInstructions}
+          onChange={handleChange("customInstructions")}
+          disabled={loading}
+        />
+        <span className="field-hint">
+          Tell the AI anything specific you'd like it to keep in mind while planning.
+        </span>
       </div>
 
       <ModelSelector value={provider} onChange={setProvider} disabled={loading} />
