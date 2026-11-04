@@ -2,10 +2,13 @@ import logger from "./logger";
 import {
   RepetitionLoopError,
   IncompleteResponseError,
+  RateLimitError,
   hasRunawayRepetition,
   createRunawayStringGuard,
 } from "./aiGuards";
 import { generateOllamaCompletion } from "./ollama";
+import { generateGroqCompletion } from "./groq";
+import { generateOpenRouterCompletion } from "./openrouter";
 
 // Which AI backend to use when a call doesn't say otherwise. "gemini"
 // (default) talks to Google's API via the /api/gemini serverless proxy
@@ -18,9 +21,9 @@ import { generateOllamaCompletion } from "./ollama";
 const DEFAULT_AI_PROVIDER = import.meta.env.VITE_AI_PROVIDER || "gemini";
 
 // Re-exported for anything importing these from "./gemini" — they're
-// actually defined in aiGuards.js now so ollama.js can use them too
+// actually defined in aiGuards.js now so every provider module can use them
 // without circularly importing back from this file.
-export { RepetitionLoopError, IncompleteResponseError };
+export { RepetitionLoopError, IncompleteResponseError, RateLimitError };
 
 // Two separate models, each with its own free-tier quota. Mirrors the old
 // Groq split: the big model handles the full plan (needs real quality),
@@ -121,19 +124,6 @@ function recordRequest(model) {
 }
 
 /**
- * Thrown when Gemini's free-tier rate limit (requests/tokens per minute or
- * per day) is hit. Carries a retry-after hint (in seconds) when one is
- * available so the UI can show a genuinely useful wait time.
- */
-export class RateLimitError extends Error {
-  constructor(message, retryAfterSeconds) {
-    super(message);
-    this.name = "RateLimitError";
-    this.retryAfterSeconds = retryAfterSeconds || null;
-  }
-}
-
-/**
  * Classifies whether an error is worth retrying. Only transient issues
  * (network blips, 5xx server errors, timeouts) qualify — rate limits (429)
  * and auth failures (401/403) never do, since retrying those either wastes
@@ -218,20 +208,27 @@ function parseRateLimitInfo(message) {
  *   valid JSON until the stream completes — this is for a "feels alive"
  *   progress preview, not incremental parsing.
  *
- * @param {{type: "gemini"} | {type: "ollama", model: string}} [params.provider] -
+ * @param {{type: "gemini"} | {type: "ollama", model: string} | {type: "groq"} | {type: "openrouter"}} [params.provider] -
  *   per-call override of which backend to use, e.g. formData.provider as
  *   set by ModelSelector.jsx on the homepage. When this picks "ollama",
- *   schema/model/fallbackModel/thinkingLevel are Gemini-specific and
- *   silently ignored, since Ollama has no equivalent concepts for any of
- *   them (no quota, so no fallback model; no responseSchema, so json mode
- *   there is just Ollama's own format:"json"). Falls back to
- *   DEFAULT_AI_PROVIDER (VITE_AI_PROVIDER) when omitted, for any caller
- *   that hasn't been updated to pass one explicitly.
+ *   "groq", or "openrouter", schema/model/fallbackModel/thinkingLevel are
+ *   Gemini-specific and handled per that provider's own module instead (see
+ *   groq.js/openrouter.js — both support schema enforcement and most
+ *   support streaming, unlike Ollama, but neither has Gemini's exact
+ *   thinkingLevel concept). Falls back to DEFAULT_AI_PROVIDER
+ *   (VITE_AI_PROVIDER) when omitted, for any caller that hasn't been
+ *   updated to pass one explicitly.
  */
 export async function generateCompletion({ provider, ...params }) {
   const effectiveType = provider?.type || DEFAULT_AI_PROVIDER;
   if (effectiveType === "ollama") {
     return generateOllamaCompletion({ ...params, model: provider?.model });
+  }
+  if (effectiveType === "groq") {
+    return generateGroqCompletion(params);
+  }
+  if (effectiveType === "openrouter") {
+    return generateOpenRouterCompletion(params);
   }
   return generateGeminiCompletion(params);
 }
