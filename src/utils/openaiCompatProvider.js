@@ -58,6 +58,15 @@ export async function generateOpenAICompatCompletion({
   model,
   fallbackModel,
   onChunk,
+  // Provider-specific knobs merged straight into the request body — e.g.
+  // Groq's reasoning_effort or OpenRouter's reasoning object (see
+  // groq.js/openrouter.js). Needed because reasoning-capable free models
+  // (Groq's gpt-oss, OpenRouter's Nemotron) spend part of the completion
+  // budget on hidden chain-of-thought before any visible content — left at
+  // its default, that reliably ate the ENTIRE budget on these large JSON
+  // generations and returned finish_reason "length" with empty content
+  // (confirmed live), not a flaky decoding issue a retry would fix.
+  extraBody = {},
 }) {
   let maxRetries = 3;
   let lastErr;
@@ -81,9 +90,15 @@ export async function generateOpenAICompatCompletion({
             { role: "user", content: prompt },
           ],
           temperature,
+          // Sent under both names — "max_tokens" is the older OpenAI field
+          // some providers still key off; "max_completion_tokens" is the
+          // current one, reasoning-aware, and the one Groq's docs document
+          // (default a mere 1024 if omitted, confirmed live via docs).
           max_tokens: maxTokens,
+          max_completion_tokens: maxTokens,
           ...(json ? { response_format: { type: "json_object" } } : {}),
           stream: !!onChunk,
+          ...extraBody,
         }),
       });
 
