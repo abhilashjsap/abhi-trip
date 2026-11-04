@@ -233,7 +233,8 @@ button {
 input[type="text"],
 input[type="number"],
 input[type="date"],
-select {
+select,
+textarea {
   padding: 0.8rem 1rem;
   border: 1.5px solid var(--line);
   border-radius: 10px;
@@ -244,6 +245,11 @@ select {
   transition: border-color 0.15s ease;
 }
 
+textarea {
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
 input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -251,7 +257,8 @@ input[type="checkbox"] {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--rust);
   outline: none;
 }
