@@ -14,7 +14,12 @@ export default function PracticalInfo({ visaInfo, simInfo, bookInAdvance }) {
         {visaInfo && (
           <div className="practical-info-block">
             <span className="practical-info-label">Visa</span>
-            <p className="practical-info-status">{visaInfo.status}</p>
+            <p className="practical-info-status">
+              {visaInfo.status}
+              {visaInfo.feeEstimate && (
+                <span className="practical-info-fee"> · {toDisplayText(visaInfo.feeEstimate)}</span>
+              )}
+            </p>
             <p>{visaInfo.note}</p>
           </div>
         )}
