@@ -1,4 +1,4 @@
-import { createOpenAICompatHandler } from "../lib/openaiCompatProxy";
+import { createOpenAICompatHandler } from "../lib/openaiCompatProxy.js";
 
 export default createOpenAICompatHandler({
   baseUrl: "https://openrouter.ai/api/v1",
