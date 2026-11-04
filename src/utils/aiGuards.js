@@ -1,8 +1,8 @@
-// Provider-agnostic error classes and streaming guards shared by gemini.js
-// and ollama.js — split out so both can import them without either file
-// depending on the other (generateCompletion in gemini.js delegates to
-// ollama.js when VITE_AI_PROVIDER=ollama, so ollama.js can't import back
-// from gemini.js without a circular dependency).
+// Provider-agnostic error classes and streaming guards shared by every
+// provider module (gemini.js, ollama.js, groq.js, openrouter.js) — split out
+// so each can import them without depending on gemini.js (generateCompletion
+// in gemini.js dispatches to all of them by provider.type, so none of them
+// can import back from gemini.js without a circular dependency).
 
 /**
  * Thrown when the model's own token decoding gets stuck in a repetition
@@ -37,6 +37,21 @@ export class IncompleteResponseError extends Error {
     super(message);
     this.name = "IncompleteResponseError";
     this.finishReason = finishReason;
+  }
+}
+
+/**
+ * Thrown when a provider's free-tier rate limit (requests/tokens per minute
+ * or per day) is hit. Carries a retry-after hint (in seconds) when one is
+ * available so the UI can show a genuinely useful wait time. Originally
+ * Gemini-specific (gemini.js), moved here once Groq/OpenRouter needed the
+ * same class without importing from gemini.js.
+ */
+export class RateLimitError extends Error {
+  constructor(message, retryAfterSeconds) {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds || null;
   }
 }
 
