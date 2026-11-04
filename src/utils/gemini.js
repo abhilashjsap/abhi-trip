@@ -155,6 +155,25 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Gemini's free tier enforces TWO separate 429 conditions per model — a
+// generous daily cap (confirmed live: 20 requests/day) and a much tighter
+// per-minute burst cap (confirmed live: 5 requests/minute, quotaId
+// "GenerateRequestsPerMinutePerProjectPerModel-FreeTier") — both surface as
+// an identical HTTP 429 with no distinct field, only distinguishable by
+// grepping the error body's quotaId/metric text. Conflating them was a real
+// bug: a brief per-minute burst (e.g. a multi-stop trip's parallel per-
+// destination calls all landing in the same second) was being treated as
+// "this model is done for today" and permanently burning the fallback
+// model's own separate quota, when waiting out Google's own suggested
+// retryDelay (a few seconds) and retrying the SAME model would have worked.
+function parseRateLimitInfo(message) {
+  if (!message) return { isPerMinute: false, retryAfterMs: null };
+  const isPerMinute = /PerMinute/i.test(message);
+  const retryMatch = message.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  const retryAfterMs = retryMatch ? Math.ceil(parseFloat(retryMatch[1]) * 1000) : null;
+  return { isPerMinute, retryAfterMs };
+}
+
 /**
  * Calls Gemini via our own /api/gemini serverless proxy and returns the raw
  * text content. The proxy exists because generativelanguage.googleapis.com
@@ -398,14 +417,17 @@ async function generateGeminiCompletion({
       lastErr = err;
       lastStatus = err?.status;
 
-      // 429 means THIS model's daily quota is exhausted — retrying the
-      // same model is pointless (it'll just 429 again), but quota is
-      // enforced per-model, so a different model has its own separate
-      // allowance. Switch once, and give it its own full 4-attempt budget
-      // (see modelSwitchedAtAttempt above) rather than whatever's left of
-      // the primary's — it deserves a fair shot regardless of how late the
-      // switch happens to land.
-      if (lastStatus === 429 && fallbackModel && !usedFallback) {
+      const rateLimitInfo = lastStatus === 429 ? parseRateLimitInfo(err.message) : null;
+      const isPerMinuteRateLimit = !!rateLimitInfo?.isPerMinute;
+
+      // A 429 with no per-minute marker means THIS model's DAILY quota is
+      // exhausted — retrying the same model is pointless (it'll just 429
+      // again until tomorrow), but quota is enforced per-model, so a
+      // different model has its own separate allowance. Switch once, and
+      // give it its own full 4-attempt budget (see modelSwitchedAtAttempt
+      // above) rather than whatever's left of the primary's — it deserves a
+      // fair shot regardless of how late the switch happens to land.
+      if (lastStatus === 429 && !isPerMinuteRateLimit && fallbackModel && !usedFallback) {
         logger.error(`Quota exhausted for ${model}, falling back to ${fallbackModel}:`, err);
         model = fallbackModel;
         usedFallback = true;
@@ -416,7 +438,14 @@ async function generateGeminiCompletion({
 
       const isRepetitionLoop = err instanceof RepetitionLoopError;
       const isIncomplete = err instanceof IncompleteResponseError;
-      const isTransient = isRepetitionLoop || isIncomplete || isRetryableError(lastStatus);
+      // A per-minute 429 is just a brief shared-quota burst (the API key is
+      // shared across every visitor, and this app itself can trip it with
+      // its own parallel per-destination calls — see
+      // generateMultiStopTripPlan) — worth retrying the SAME model after
+      // Google's own suggested delay instead of immediately burning the
+      // fallback model's separate quota on what clears up in a few seconds.
+      const isTransient =
+        isRepetitionLoop || isIncomplete || isRetryableError(lastStatus) || isPerMinuteRateLimit;
 
       if (attempt < maxRetries && isTransient) {
         // Neither a repetition loop nor an early non-STOP finish is a
@@ -425,7 +454,11 @@ async function generateGeminiCompletion({
         // retrying. Backoff is keyed off attemptOnModel (not the raw outer
         // attempt) so it restarts at 700ms after a model switch instead of
         // continuing to escalate from wherever the previous model left off.
-        const backoffMs = isRepetitionLoop || isIncomplete ? 0 : 700 * 2 ** attemptOnModel; // 700ms, 1400ms, 2800ms
+        const backoffMs = isPerMinuteRateLimit
+          ? Math.min(Math.max(rateLimitInfo.retryAfterMs || 7000, 1000), 15000)
+          : isRepetitionLoop || isIncomplete
+            ? 0
+            : 700 * 2 ** attemptOnModel; // 700ms, 1400ms, 2800ms
         logger.error(
           `Gemini call failed (${model}, attempt ${attemptOnModel + 1} of ${maxRetries - modelSwitchedAtAttempt + 1}), retrying in ${backoffMs}ms:`,
           err
@@ -435,12 +468,14 @@ async function generateGeminiCompletion({
       }
 
       // The primary model burned through all its own retries without ever
-      // giving a clean quota signal (429) — observed live as a run of 503
-      // "high demand" overload errors interleaved with incomplete-response
-      // guards, none of which ever let the 429 branch above fire. A demand
-      // spike hammering one model's backend doesn't necessarily touch a
-      // different model's, so it's worth a full fresh retry budget on the
-      // fallback before failing outright — NOT just one last-chance slot
+      // giving a clean DAILY-quota signal (a non-per-minute 429) — observed
+      // live as a run of 503 "high demand" overload errors interleaved with
+      // incomplete-response guards (neither lets the daily-quota branch
+      // above fire), and also reachable now if a per-minute throttle somehow
+      // persists across every retry's wait. A demand spike hammering one
+      // model's backend doesn't necessarily touch a different model's, so
+      // it's worth a full fresh retry budget on the fallback before failing
+      // outright — NOT just one last-chance slot
       // (confirmed live: a late switch with only 1 slot left meant one
       // unlucky repetition-loop on the fallback ended the whole generation,
       // when a 2nd or 3rd fresh attempt would very likely have succeeded).
